@@ -17,3 +17,5 @@ Kan også skrive til fil, se headerfila. Må skrive både headerfila og bildefil
 Ligger begynnelsen på en CMakeLists.txt-fil om atte du vil bruke cmake (mkdir build, cd build, cmake .., make). Kompilerer main.cpp, basic eksempel som dytter ett av bølgelengdebåndene til standard output (./hyperread_example [bildefil] > tjafs, åpne tjafs i e.g. MATLAB (A = load('tjafs'); imagesc(A))).
 
 readimage.cpp krever boost_regex, men funksjonskallene som er brukt er egentlig klin like GNU sin regeximplementasjon, og kan i teorien byttes ut ganske lett med GNU sin innebygde regex ved lyst og (u)vilje.
+
+TODO: (gang med 0.125 og del på intensiteten til første bølgelengde)
