@@ -54,8 +54,8 @@ void hyperspec_read_img(const char *filename){
   float* linebuffer;
   for (int im=0; im < header.bands; im++) {
     char buffer[32]; // The filename buffer.
-    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im);
-    TIFF *out = TIFFOpen(buffer, "w");
+    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im); // recursive filenames
+    TIFF *out = TIFFOpen(buffer, "w"); // open file for writing
     TIFFSetField(out, TIFFTAG_IMAGEWIDTH, header.lines);
     TIFFSetField(out, TIFFTAG_IMAGELENGTH, header.samples);
     TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
@@ -63,10 +63,11 @@ void hyperspec_read_img(const char *filename){
     TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
     TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP); // Float point image
     TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 32);
     TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 
+    // Allocate memory
     float* tmp=(float*)_TIFFmalloc(header.samples*header.lines);
 
     if (tmp != NULL) {
@@ -82,18 +83,17 @@ void hyperspec_read_img(const char *filename){
     //}
     linebuffer[0]=0;
 	  for (int i=0; i < header.lines; i++) {
-	    for (int j=0; j < header.samples; j++) {
-  	    linebuffer[j] = image[i*header.samples*header.bands + center_band*header.samples + j];
+      for (int j=0; j < header.samples; j++) {
+        linebuffer[j] = image[i*header.samples*header.bands + center_band*header.samples + j];
       }
-
-    TIFFWriteScanline(out, linebuffer, i);
-
+      TIFFWriteScanline(out, linebuffer, i);
     }
-
     _TIFFfree(linebuffer);
     TIFFClose(out);
   }
-	delete [] image;
+
+  delete [] image;
+
 }
 
 void hyperspec_read_mat(const char *filename){
@@ -113,7 +113,7 @@ void hyperspec_read_mat(const char *filename){
 	matvar_t *wavelengthsi = Mat_VarReadInfo(matfp, "wavelengths");
   matvar_t *wavelengthsd = Mat_VarRead(matfp, "wavelengths");
 
-  Mat_VarPrint(HSIi,1);
+  //Mat_VarPrint(HSIi,1);
   //Mat_VarPrint(wavelengthsd,1);
 
   // Get information from file
@@ -131,12 +131,7 @@ void hyperspec_read_mat(const char *filename){
     std::cout << wData[i] << ", ";
   }
 	std::cout << wData[nWave-1] << " Array size: " << HSId->nbytes/HSId->data_size << " Compression: " << HSId->compression << " Data type: " << HSId->data_type << std::endl;
-  /*
-  for (int i=0; i<xSize*ySize; i++){
-    std::cout << hData[i];
-  }
-  std::cout << " " << std::endl;
-	*/
+
   // Write to tiff
 
   uint16_t* linebuffer;
@@ -152,10 +147,11 @@ void hyperspec_read_mat(const char *filename){
     TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
     TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT); // Not float point images
     TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);
     TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 
+    // Allocate memory
     short unsigned* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
 
     if (tmp != NULL) {
@@ -174,11 +170,8 @@ void hyperspec_read_mat(const char *filename){
       for (int j=0; j < xSize; j++) {
         linebuffer[j] = hData[j + xSize*i + xSize*ySize*im];
       }
-
-    TIFFWriteScanline(out, linebuffer, i);
+      TIFFWriteScanline(out, linebuffer, i);
     }
-    std::cout << "Written one image" << std::endl;
-
     _TIFFfree(linebuffer);
     TIFFClose(out);
   }
@@ -189,7 +182,4 @@ void hyperspec_read_mat(const char *filename){
   Mat_VarFree(HSIi);
 	Mat_VarFree(HSId);
   Mat_Close(matfp);
-
-  //char buffer[32];
-  //TIFF *out = TIFFOpen("filename.tif", "w");
 }
