@@ -1,3 +1,10 @@
+//==========================================================================
+// Copyright 2016 Stig Viste, Norwegian University of Science and Technology
+// Distributed under the MIT License.
+// (See accompanying file LICENSE or copy at
+// http://opensource.org/licenses/MIT
+// =========================================================================
+
 #include "readimage.h"
 #include "tiffio.h"
 #include "matio.h"
@@ -6,6 +13,30 @@
 #include <string>
 #include "string.h"
 #include "hyperspec_read.h"
+#include "itkImage.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
+
+/* TODO:
+
+Read from config file
+-> http://www.hyperrealm.com/libconfig/
+-> https://en.wikipedia.org/wiki/Configuration_file
+
+Apply gradient of image
+-> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=[1 2 3])
+
+Apply median of image
+-> ITK/Examples/Filtering/MedianImageFilter.cxx
+
+Apply registration
+-> ITK/Examples/Registration/ImageRegistration6.cxx
+-> ITK/Examples/Registration/ImageRegistration7.cxx
+-> ITK/Examples/Registration/ImageRegistration9.cxx
+-> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient)
+
+*/
 
 void hyperspec_read_img(const char *filename){
   // Function for handling .img
@@ -13,12 +44,69 @@ void hyperspec_read_img(const char *filename){
 	struct hyspex_header header;
 	hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
 
+  //std::cout << header.datatype << std::endl;
+
 	// Read hyperspectral image
-	float *image = new float[header.samples*header.lines*header.bands]();
-  errcode = hyperspectral_read_image(filename, &header, image);
 
-	// Variable `image` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
+	if ( header.datatype != 4 ){
+		std::cout << "Unsupported datatype. Must be float." << std::endl;
+	}
 
+	float *img = new float[header.samples*header.lines*header.bands]();
+	errcode = hyperspectral_read_image(filename, &header, img);
+
+	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
+
+	// Setup types
+  typedef itk::Image< typeof (*img), 2 > ImageType;
+	typedef itk::Image< typeof (*img), 2 > GradientImageType;
+	typedef itk::GradientMagnitudeRecursiveGaussianImageFilter< GradientImageType, ImageType >  GradientFilterType;
+
+	// Initiate image container
+  ImageType::RegionType region;
+  ImageType::IndexType start;
+
+  start[0] = 0;
+  start[1] = 0;
+
+  ImageType::SizeType size;
+  size[0] = header.samples;
+  size[1] = header.lines;
+
+  region.SetSize(size);
+  region.SetIndex(start);
+
+  ImageType::Pointer image = ImageType::New();
+  image->SetRegions(region);
+  image->Allocate();
+
+  int centerband = 45;
+  for (int i=0; i < header.lines; i++){
+    for (int j=0; j < header.samples; j++){
+      ImageType::IndexType pixelIndex;
+      pixelIndex[0] = j;
+      pixelIndex[1] = i;
+      image->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
+      //std::cout << itkimage->GetPixel( pixelIndex ) << std::endl;
+		}
+	}
+
+	// Create and setup a gradient filter
+  int sigma = 1;
+	GradientFilterType::Pointer gradientFilter = GradientFilterType::New();
+  gradientFilter->SetSigma ( sigma );
+	gradientFilter->SetInput( image );
+
+  typedef  itk::ImageFileWriter< ImageType  > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName("test.tif");
+	writer->SetInput( gradientFilter->GetOutput());
+	writer->Update();
+
+
+
+
+/*
   float* linebuffer;
   for (int im=0; im < header.bands; im++) {
     char buffer[32]; // The filename buffer.
@@ -44,23 +132,18 @@ void hyperspec_read_img(const char *filename){
       std::cout << "Error allocating memory." << std::endl ;
     }
 
-    int center_band = im;
-    /* Uncomment to displace image k pixels to the right */
-    //for (int k=0; k < 199; k++) {
-    //  linebuffer[k] = 0;
-    //}
     linebuffer[0]=0;
 	  for (int i=0; i < header.lines; i++) {
       for (int j=0; j < header.samples; j++) {
-        linebuffer[j] = image[i*header.samples*header.bands + center_band*header.samples + j];
+        linebuffer[j] = image[i*header.samples*header.bands + im*header.samples + j];
       }
       TIFFWriteScanline(out, linebuffer, i);
     }
     _TIFFfree(linebuffer);
     TIFFClose(out);
   }
-
-  delete [] image;
+*/
+  delete [] img;
 
 }
 
@@ -120,7 +203,7 @@ void hyperspec_read_mat(const char *filename){
     TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 
     // Allocate memory
-    short unsigned* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
+    uint16_t* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
 
     if (tmp != NULL) {
       linebuffer = tmp;
@@ -128,11 +211,6 @@ void hyperspec_read_mat(const char *filename){
       std::cout << "Error allocating memory." << std::endl ;
     }
 
-    //int center_band = im;
-    // Uncomment to displace image k pixels to the right
-    //for (int k=0; k < 199; k++) {
-    //  linebuffer[k] = 0;
-    //}
     linebuffer[0]=0;
     for (int i=0; i < ySize; i++) {
       for (int j=0; j < xSize; j++) {

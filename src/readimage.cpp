@@ -58,13 +58,14 @@ hyperspectral_err_t hyperspectral_read_header(const char* filename, struct hyspe
 	string hdrOffset = getValue(hdrText, "header offset");
 	string interleave = getValue(hdrText, "interleave");
 	string datatype = getValue(hdrText, "data type");
-	cerr << samples.empty() << endl;
-	cerr << bands.empty() << endl;
+  /*
+  cerr << samples.empty() << endl;
+  cerr << bands.empty() << endl;
 	cerr << lines.empty() << endl;
 	cerr << hdrOffset.empty() << endl;
 	cerr << interleave.empty() << endl;
 	cerr << datatype.empty() << endl;
-
+  */
 	if ((samples.empty()) || (bands.empty()) || (lines.empty()) || (hdrOffset.empty()) || (interleave.empty()) || (datatype.empty())){
 		return HYPERSPECTRAL_HDR_PROPERTY_NOT_FOUND;
 	}
@@ -86,7 +87,7 @@ hyperspectral_err_t hyperspectral_read_header(const char* filename, struct hyspe
 	}
 
 	//recap
-	fprintf(stderr, "Extracted: lines=%d, samples=%d, bands=%d, offset=%d\n", header->lines, header->samples, header->bands, header->offset);
+	fprintf(stderr, "Extracted: lines=%d, samples=%d, bands=%d, offset=%d, data type=%d\n", header->lines, header->samples, header->bands, header->offset, header->datatype);
 	fprintf(stderr, "Wavelengths: ");
 	for (int i=0; i < header->wlens.size(); i++){
 		fprintf(stderr, "%f ", header->wlens[i]);
@@ -107,9 +108,10 @@ hyperspectral_err_t hyperspectral_read_image(const char *filename, struct hyspex
 	return hyperspectral_read_image(filename, header, subset, data);
 }
 
+
 hyperspectral_err_t hyperspectral_read_image(const char *filename, struct hyspex_header *header, struct image_subset subset, float *data){
 	//find number of bytes for contained element
-	size_t elementBytes = 0;
+  size_t elementBytes = 0;
 	if (header->datatype == 4){
 		elementBytes = sizeof(float);
 	} else if (header->datatype == 12){

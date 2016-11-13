@@ -8,7 +8,7 @@
 #include <iostream>
 #include "string.h"
 #include "hyperspec_read.h"
-
+#include "readimage.h"
 
 int main(int argc, char *argv[])
 {
