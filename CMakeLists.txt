@@ -6,5 +6,5 @@ include(${ITK_USE_FILE})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/includes)
 
-add_executable(hyperspec_registration main.cpp src/hyperspec_read.cpp src/readimage.cpp)
+add_executable(hyperspec_registration main.cpp src/hyperspec_read.cpp src/readimage.cpp src/registration.cpp)
 target_link_libraries(hyperspec_registration boost_regex matio tiff ${ITK_LIBRARIES})

@@ -6,6 +6,7 @@
 // =========================================================================
 
 #include "readimage.h"
+#include "registration.h"
 #include "tiffio.h"
 #include "matio.h"
 #include <iostream>
@@ -24,11 +25,10 @@ Read from config file
 -> http://www.hyperrealm.com/libconfig/
 -> https://en.wikipedia.org/wiki/Configuration_file
 
-Apply gradient of image
+Apply gradient of image (DONE)
 -> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=[1 2 3])
 
-Apply median of image
--> ITK/Examples/Filtering/MedianImageFilter.cxx
+
 
 Apply registration
 -> ITK/Examples/Registration/ImageRegistration6.cxx
@@ -48,18 +48,21 @@ void hyperspec_read_img(const char *filename){
 
 	// Read hyperspectral image
 
-	if ( header.datatype != 4 ){
+	if ( header.datatype != 4 ){ // TODO: Support multiple data types
 		std::cout << "Unsupported datatype. Must be float." << std::endl;
 	}
 
 	float *img = new float[header.samples*header.lines*header.bands]();
 	errcode = hyperspectral_read_image(filename, &header, img);
 
+  typedef float         PixelType;
+  const   unsigned int  Dimension = 2;
+
 	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
 
 	// Setup types
-  typedef itk::Image< typeof (*img), 2 > ImageType;
-	typedef itk::Image< typeof (*img), 2 > GradientImageType;
+  typedef itk::Image< PixelType, Dimension > ImageType;
+	typedef itk::Image< PixelType, Dimension > GradientImageType;
 	typedef itk::GradientMagnitudeRecursiveGaussianImageFilter< GradientImageType, ImageType >  GradientFilterType;
 
 	// Initiate image container
@@ -76,33 +79,65 @@ void hyperspec_read_img(const char *filename){
   region.SetSize(size);
   region.SetIndex(start);
 
-  ImageType::Pointer image = ImageType::New();
-  image->SetRegions(region);
-  image->Allocate();
+  // Fixed image
+  ImageType::Pointer fixed = ImageType::New();
+  fixed->SetRegions(region);
+  fixed->Allocate();
 
-  int centerband = 45;
+  // Moving image
+  ImageType::Pointer moving = ImageType::New();
+
+  // Read center image for registration
+  int centerband = header.bands/2;
   for (int i=0; i < header.lines; i++){
     for (int j=0; j < header.samples; j++){
       ImageType::IndexType pixelIndex;
       pixelIndex[0] = j;
       pixelIndex[1] = i;
-      image->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
-      //std::cout << itkimage->GetPixel( pixelIndex ) << std::endl;
+      fixed->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
 		}
 	}
 
 	// Create and setup a gradient filter
-  int sigma = 1;
+  int sigma = 1; // TODO: Take as input
 	GradientFilterType::Pointer gradientFilter = GradientFilterType::New();
   gradientFilter->SetSigma ( sigma );
-	gradientFilter->SetInput( image );
+	gradientFilter->SetInput( fixed );
 
+  // Read other images for processing
+  for (int i=0; i < header.bands; i++){
+    // Skip fixed image
+    if ( i == centerband ){
+      continue;
+    }
+
+    moving->SetRegions(region);
+    moving->Allocate();
+
+    for (int j=0; j < header.lines; j++){
+      for (int k=0; k < header.samples; k++){
+        ImageType::IndexType pixelIndex;
+        pixelIndex[0] = k;
+        pixelIndex[1] = j;
+        moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
+      }
+    }
+
+    // Throw to registration handler
+    char buffer[32];                                        // Filename buffer
+    snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
+    registration1( fixed, moving, buffer );
+  }
+
+
+	// Write to file
+	/*
   typedef  itk::ImageFileWriter< ImageType  > WriterType;
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName("test.tif");
 	writer->SetInput( gradientFilter->GetOutput());
 	writer->Update();
-
+	*/
 
 
 
