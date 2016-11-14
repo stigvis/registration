@@ -58,15 +58,15 @@ typedef float         PixelType;
 typedef itk::Image< PixelType, Dimension >  FixedImageType;
 typedef itk::Image< PixelType, Dimension >  MovingImageType;
 
-void registration1( FixedImageType* const fixed, MovingImageType* const moving, char *argv[] ){
-  
+void registration1( FixedImageType* const fixed, MovingImageType* const moving, char argv[] ){
+
   // Initialize parameters
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
   float lrate   = 0.1;                          // Learning rate
   float slength = 0.001;                        // Minimum step length
   int   niter   = 200;                          // Number of iterations
-  
+
   const unsigned int numberOfLevels = 1;        // 1:1 transform
   const double translationScale = 1.0 / 1000.0; 
 
@@ -122,7 +122,7 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
 
   // Set parameters
   transform->SetAngle( angle );
-  
+
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
 
@@ -248,8 +248,8 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   // Write the transform
 
   WriterType::Pointer     writer = WriterType::New();
-  
-  writer->SetFileName( argv[3] );
+
+  writer->SetFileName( &argv[3] );
   writer->SetInput( resample->GetOutput() );
   writer->Update();
 };
