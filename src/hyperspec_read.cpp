@@ -124,8 +124,8 @@ void hyperspec_read_img(const char *filename){
     }
 
     // Throw to registration handler
-    char buffer[32];                                        // Filename buffer
-    snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
+    char* buffer[32];                                        // Filename buffer
+    snprintf(*buffer, sizeof(char*) * 32, "output%i.tif", i); // Recursive filenames
     registration1( fixed, moving, buffer );
   }
 

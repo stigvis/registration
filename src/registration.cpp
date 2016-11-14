@@ -6,7 +6,7 @@
 #include "itkCenteredRigid2DTransform.h"
 #include "itkCenteredTransformInitializer.h"
 
-#include "itkImageFileReader.h"
+//#include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 
 #include "itkResampleImageFilter.h"
@@ -58,12 +58,12 @@ typedef float         PixelType;
 typedef itk::Image< PixelType, Dimension >  FixedImageType;
 typedef itk::Image< PixelType, Dimension >  MovingImageType;
 
-void registration1( FixedImageType* const fixed, MovingImageType* const moving, char argv[] ){
+void registration1( FixedImageType* const fixed, MovingImageType* const moving, char *argv[] ){
   
   // Initialize parameters
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
-  float lrate   = 0.2;                          // Learning rate
+  float lrate   = 0.1;                          // Learning rate
   float slength = 0.001;                        // Minimum step length
   int   niter   = 200;                          // Number of iterations
   
@@ -169,6 +169,30 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
     exit(1);
   }
 
+  // Resample new image
+
+  typedef itk::ResampleImageFilter<
+                              MovingImageType,
+                              FixedImageType >      ResampleFilterType;
+  ResampleFilterType::Pointer resample = ResampleFilterType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetDefaultPixelValue(               0.4               ); // ?
+
+  typedef itk::Image< PixelType, Dimension >        OutputImageType;
+  /*
+  typedef itk::CastImageFilter<
+                              FixedImageType,
+                              OutputImageType >     CastFilterType;
+
+  CastFilterType::Pointer     caster =              CastFilterType::New();
+  caster->SetInput( resample->GetOutput() );
+  */
+
   // Grafting transform object to the output
   TransformType::ParametersType finalParameters = transform->GetParameters();
 
@@ -195,39 +219,37 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   std::cout << " Metric value  = " << bestValue          << std::endl;
 
   // Compute the difference between the images before and after registration
-  typedef itk::Image< PixelType, Dimension >  DifferenceImageType;
-  
+  // We want a visible diff-image
+  typedef itk::Image< PixelType, Dimension >        DifferenceImageType;
   typedef itk::SubtractImageFilter<
                               FixedImageType,
                               FixedImageType,
                               DifferenceImageType > DifferenceFilterType;
-  DifferenceFilterType::Pointer difference = DifferenceFilterType::New();
-
-  typedef itk::Image< PixelType, Dimension >  OutputImageType;
-
-  // We want a visible diff-image
+  typedef itk::Image< PixelType, Dimension >        OutputImageType;
   typedef itk::RescaleIntensityImageFilter<
                               DifferenceImageType,
                               OutputImageType >     RescalerType;
+  typedef itk::ImageFileWriter< OutputImageType >   WriterType;
 
-  RescalerType::Pointer intensityRescaler = RescalerType::New();
+  DifferenceFilterType::Pointer difference  =  DifferenceFilterType::New();
+  RescalerType::Pointer intensityRescaler   =  RescalerType::New();
 
   intensityRescaler->SetOutputMinimum( 0 );
   intensityRescaler->SetOutputMaximum( 1 );
 
   difference->SetInput1(    fixed   );
-  difference->SetInput2(    moving  );
+  difference->SetInput2(    resample->GetOutput() );
 
   intensityRescaler->SetInput( difference->GetOutput()  );
 
+  WriterType::Pointer     writerdiff        =  WriterType::New();
+  writerdiff->SetInput( intensityRescaler->GetOutput()  );
+
   // Write the transform
-  typedef itk::ImageFileWriter< OutputImageType >   WriterType;
 
   WriterType::Pointer     writer = WriterType::New();
   
-  writer->SetFileName( &argv[3] );
-
-  writer->SetInput(       moving        );
+  writer->SetFileName( argv[3] );
+  writer->SetInput( resample->GetOutput() );
   writer->Update();
-
 };

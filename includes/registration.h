@@ -19,6 +19,6 @@ typedef itk::Image< PixelType, Dimension >  FixedImageType;
 typedef itk::Image< PixelType, Dimension >  MovingImageType;
 
 // Image registration, type 1
-void registration1( FixedImageType* const fixed, MovingImageType* const moving, char argv[] );
+void registration1( FixedImageType* const fixed, MovingImageType* const moving, char *argv[] );
 
 #endif // REGISTRATION_H_DEFINED
