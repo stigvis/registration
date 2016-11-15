@@ -1,85 +1,16 @@
+#include "registration.h"
 
-#include "itkImageRegistrationMethodv4.h"
-#include "itkMeanSquaresImageToImageMetricv4.h"
-#include "itkRegularStepGradientDescentOptimizerv4.h"
-
-#include "itkCenteredRigid2DTransform.h"
-#include "itkCenteredTransformInitializer.h"
-
-//#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-
-#include "itkResampleImageFilter.h"
-#include "itkCastImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkSubtractImageFilter.h"
-
-
-//  The following section of code implements a command observer
-//  that will monitor the evolution of the registration process.
-//
-#include "itkCommand.h"
-class CommandIterationUpdate : public itk::Command {
-public:
-  typedef  CommandIterationUpdate   Self;
-  typedef  itk::Command             Superclass;
-  typedef  itk::SmartPointer<Self>  Pointer;
-  itkNewMacro( Self );
-
-protected:
-  CommandIterationUpdate() {};
-
-public:
-  typedef itk::RegularStepGradientDescentOptimizerv4<double>  OptimizerType;
-  typedef const OptimizerType *                               OptimizerPointer;
-
-  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
-    {
-    Execute( (const itk::Object *)caller, event);
-    }
-
-  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
-    {
-    OptimizerPointer optimizer = static_cast< OptimizerPointer >( object );
-    if( ! itk::IterationEvent().CheckEvent( &event ) )
-      {
-      return;
-      }
-    std::cout << optimizer->GetCurrentIteration() << "   ";
-    std::cout << optimizer->GetValue() << "   ";
-    std::cout << optimizer->GetCurrentPosition() << std::endl;
-    }
-};
-
-// Instantiation of input images
-const   unsigned int  Dimension = 2;
-typedef float         PixelType;
-
-typedef itk::Image< PixelType, Dimension >  FixedImageType;
-typedef itk::Image< PixelType, Dimension >  MovingImageType;
-
-void registration1( FixedImageType* const fixed, MovingImageType* const moving, char argv[] ){
+void registration1( ImageType* const fixed, ImageType* const moving, char argv[] ){
 
   // Initialize parameters
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
-  float lrate   = 0.1;                          // Learning rate
-  float slength = 0.001;                        // Minimum step length
+  float lrate   = 1;                          // Learning rate
+  float slength = 0.1;                        // Minimum step length
   int   niter   = 200;                          // Number of iterations
 
   const unsigned int numberOfLevels = 1;        // 1:1 transform
-  const double translationScale = 1.0 / 1000.0; 
-
-
-  // Instantiation of transform types
-  typedef itk::CenteredRigid2DTransform< double >             TransformType;
-  typedef itk::RegularStepGradientDescentOptimizerv4<double>  OptimizerType;
-  typedef itk::MeanSquaresImageToImageMetricv4<
-                              FixedImageType,
-                              MovingImageType >               MetricType;
-  typedef itk::ImageRegistrationMethodv4<
-                              FixedImageType,
-                              MovingImageType >               RegistrationType;
+  const double translationScale = 1.0 / 1000.0;  
 
   MetricType::Pointer         metric        = MetricType::New();
   OptimizerType::Pointer      optimizer     = OptimizerType::New();
@@ -91,20 +22,9 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   // Construction of the transform object
   TransformType::Pointer  transform = TransformType::New();
 
-  //typedef itk::ImageFileReader< FixedImageType  > FixedImageReaderType;
-  //typedef itk::ImageFileReader< MovingImageType > MovingImageReaderType;
-
-  //FixedImageReaderType::Pointer   fixedImageReader  = FixedImageReaderType::New();
-  //MovingImageReaderType::Pointer  movingImageReader = MovingImageReaderType::New();
-
   registration->SetFixedImage(  fixed  );
   registration->SetMovingImage( moving );
 
-  // Instantiation of the initializer
-  typedef itk::CenteredTransformInitializer<
-                              TransformType,
-                              FixedImageType,
-                              MovingImageType >               TransformInitializerType;
 
   TransformInitializerType::Pointer initializer =
                               TransformInitializerType::New();
@@ -126,7 +46,6 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
 
-  typedef OptimizerType::ScalesType                           OptimizerScalesType;
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
   optimizerScales[0] = 1.0;
@@ -171,9 +90,6 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
 
   // Resample new image
 
-  typedef itk::ResampleImageFilter<
-                              MovingImageType,
-                              FixedImageType >      ResampleFilterType;
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
   resample->SetTransform(               transform                 );
@@ -182,16 +98,6 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   resample->SetOutputOrigin(        fixed->GetOrigin()            );
   resample->SetOutputSpacing(       fixed->GetSpacing()           );
   resample->SetDefaultPixelValue(               0.4               ); // ?
-
-  typedef itk::Image< PixelType, Dimension >        OutputImageType;
-  /*
-  typedef itk::CastImageFilter<
-                              FixedImageType,
-                              OutputImageType >     CastFilterType;
-
-  CastFilterType::Pointer     caster =              CastFilterType::New();
-  caster->SetInput( resample->GetOutput() );
-  */
 
   // Grafting transform object to the output
   TransformType::ParametersType finalParameters = transform->GetParameters();
@@ -220,16 +126,6 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
 
   // Compute the difference between the images before and after registration
   // We want a visible diff-image
-  typedef itk::Image< PixelType, Dimension >        DifferenceImageType;
-  typedef itk::SubtractImageFilter<
-                              FixedImageType,
-                              FixedImageType,
-                              DifferenceImageType > DifferenceFilterType;
-  typedef itk::Image< PixelType, Dimension >        OutputImageType;
-  typedef itk::RescaleIntensityImageFilter<
-                              DifferenceImageType,
-                              OutputImageType >     RescalerType;
-  typedef itk::ImageFileWriter< OutputImageType >   WriterType;
 
   DifferenceFilterType::Pointer difference  =  DifferenceFilterType::New();
   RescalerType::Pointer intensityRescaler   =  RescalerType::New();
@@ -252,4 +148,5 @@ void registration1( FixedImageType* const fixed, MovingImageType* const moving, 
   writer->SetFileName( &argv[3] );
   writer->SetInput( resample->GetOutput() );
   writer->Update();
+
 };

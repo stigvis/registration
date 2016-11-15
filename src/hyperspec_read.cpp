@@ -14,10 +14,6 @@
 #include <string>
 #include "string.h"
 #include "hyperspec_read.h"
-#include "itkImage.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
 
 /* TODO:
 
@@ -26,46 +22,19 @@ Read from config file
 -> https://en.wikipedia.org/wiki/Configuration_file
 
 Apply gradient of image (DONE)
--> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=[1 2 3])
-
-
+-> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=(1 2 3))
 
 Apply registration
--> ITK/Examples/Registration/ImageRegistration6.cxx
+-> ITK/Examples/Registration/ImageRegistration6.cxx (DONE)
 -> ITK/Examples/Registration/ImageRegistration7.cxx
 -> ITK/Examples/Registration/ImageRegistration9.cxx
 -> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient)
 
 */
 
-void hyperspec_read_img(const char *filename){
-  // Function for handling .img
-  // Read hyperspectral header file
-	struct hyspex_header header;
-	hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
 
-  //std::cout << header.datatype << std::endl;
-
-	// Read hyperspectral image
-
-	if ( header.datatype != 4 ){ // TODO: Support multiple data types
-		std::cout << "Unsupported datatype. Must be float." << std::endl;
-	}
-
-	float *img = new float[header.samples*header.lines*header.bands]();
-	errcode = hyperspectral_read_image(filename, &header, img);
-
-  typedef float         PixelType;
-  const   unsigned int  Dimension = 2;
-
-	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
-
-	// Setup types
-  typedef itk::Image< PixelType, Dimension > ImageType;
-	typedef itk::Image< PixelType, Dimension > GradientImageType;
-	typedef itk::GradientMagnitudeRecursiveGaussianImageFilter< GradientImageType, ImageType >  GradientFilterType;
-
-	// Initiate image container
+// Initiate image container
+ImageType::Pointer imageContainer (struct hyspex_header header){
   ImageType::RegionType region;
   ImageType::IndexType start;
 
@@ -79,15 +48,40 @@ void hyperspec_read_img(const char *filename){
   region.SetSize(size);
   region.SetIndex(start);
 
-  // Fixed image
-  ImageType::Pointer fixed = ImageType::New();
-  fixed->SetRegions(region);
-  fixed->Allocate();
+  ImageType::Pointer container = ImageType::New();
+  container->SetRegions(region);
+  container->Allocate();
+  return container;
+}
 
-  // Moving image
-  ImageType::Pointer moving = ImageType::New();
+// Initiate gradient filter
+GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
+  GradientFilterType::Pointer gradient = GradientFilterType::New();
+  gradient->SetSigma( sigma );
+  gradient->SetInput( fixed );
+  return gradient;
+}
 
-  // Read center image for registration
+void hyperspec_read_img(const char *filename){
+  // Function for handling .img
+  // Read hyperspectral header file
+	struct hyspex_header header;
+	hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
+
+	// Read hyperspectral image
+	float *img = new float[header.samples*header.lines*header.bands]();
+	errcode = hyperspectral_read_image(filename, &header, img);
+	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
+
+
+  // Choose registration method
+  int regmethod = 1; // TODO: Take as input
+
+  // Create image containers
+  ImageType::Pointer fixed = imageContainer(header);
+  ImageType::Pointer moving = imageContainer(header);
+
+  // Read center image into fixed for registration
   int centerband = header.bands/2;
   for (int i=0; i < header.lines; i++){
     for (int j=0; j < header.samples; j++){
@@ -100,9 +94,8 @@ void hyperspec_read_img(const char *filename){
 
 	// Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
-	GradientFilterType::Pointer gradientFilter = GradientFilterType::New();
-  gradientFilter->SetSigma ( sigma );
-	gradientFilter->SetInput( fixed );
+
+  GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
 
   // Read other images for processing
   for (int i=0; i < header.bands; i++){
@@ -110,9 +103,6 @@ void hyperspec_read_img(const char *filename){
     if ( i == centerband ){
       continue;
     }
-
-    moving->SetRegions(region);
-    moving->Allocate();
 
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
@@ -126,58 +116,29 @@ void hyperspec_read_img(const char *filename){
     // Throw to registration handler
     char buffer[32];                                        // Filename buffer
     snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
+    if (regmethod == 1){
     registration1( fixed, moving, buffer );
+    } else if (regmethod == 2){
+    } else if (regmethod == 3){
+    } else if (regmethod == 4){
+    } else {
+      std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
+      registration1( fixed, moving, buffer );
+    }
+
   }
+  // Write to file
+
 
 
 	// Write to file
-	/*
-  typedef  itk::ImageFileWriter< ImageType  > WriterType;
+/*	
 	WriterType::Pointer writer = WriterType::New();
 	writer->SetFileName("test.tif");
-	writer->SetInput( gradientFilter->GetOutput());
+	writer->SetInput( gradient->GetOutput());
 	writer->Update();
-	*/
+*/	
 
-
-
-/*
-  float* linebuffer;
-  for (int im=0; im < header.bands; im++) {
-    char buffer[32]; // The filename buffer.
-    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im); // recursive filenames
-    TIFF *out = TIFFOpen(buffer, "w"); // open file for writing
-    TIFFSetField(out, TIFFTAG_IMAGEWIDTH, header.lines);
-    TIFFSetField(out, TIFFTAG_IMAGELENGTH, header.samples);
-    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, 1);    // set the size of the channels
-    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
-    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP); // Float point image
-    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 32);
-    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
-
-    // Allocate memory
-    float* tmp=(float*)_TIFFmalloc(header.samples*header.lines);
-
-    if (tmp != NULL) {
-      linebuffer = tmp;
-    } else {
-      std::cout << "Error allocating memory." << std::endl ;
-    }
-
-    linebuffer[0]=0;
-	  for (int i=0; i < header.lines; i++) {
-      for (int j=0; j < header.samples; j++) {
-        linebuffer[j] = image[i*header.samples*header.bands + im*header.samples + j];
-      }
-      TIFFWriteScanline(out, linebuffer, i);
-    }
-    _TIFFfree(linebuffer);
-    TIFFClose(out);
-  }
-*/
   delete [] img;
 
 }
@@ -198,9 +159,6 @@ void hyperspec_read_mat(const char *filename){
 	matvar_t *HSId = Mat_VarRead(matfp, "HSI");
 	matvar_t *wavelengthsi = Mat_VarReadInfo(matfp, "wavelengths");
   matvar_t *wavelengthsd = Mat_VarRead(matfp, "wavelengths");
-
-  //Mat_VarPrint(HSIi,1);
-  //Mat_VarPrint(wavelengthsd,1);
 
   // Get information from file
   // Image size

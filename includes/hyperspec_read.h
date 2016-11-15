@@ -5,12 +5,20 @@
 // http://opensource.org/licenses/MIT
 // =========================================================================
 
+#include "registration.h"
+
 #ifndef HYPERSPEC_READ_H_DEFINED
 #define HYPERSPEC_READ_H_DEFINED
 
+
+
 // Function that reads an .img file and splits into .tif files
-void hyperspec_read_img(const char *filename);
+void hyperspec_read_img( const char *filename );
 // Function that reads a .mat file and splits into .tif files
-void hyperspec_read_mat(const char *filename);
+void hyperspec_read_mat( const char *filename );
+
+ImageType::Pointer imageContainer( struct hyspex_header header );
+
+GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ); 
 
 #endif // HYPERSPEC_READ_H_DEFINED
