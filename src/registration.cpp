@@ -65,7 +65,7 @@ ResampleFilterType::Pointer resamplePointer(
   resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
   resample->SetOutputOrigin(        fixed->GetOrigin()            );
   resample->SetOutputSpacing(       fixed->GetSpacing()           );
-  resample->SetDefaultPixelValue(               0.4               ); // ?
+  resample->SetDefaultPixelValue(               0.0               ); // ?
   return resample;
 }
 
@@ -124,8 +124,8 @@ ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* co
   // Initialize parameters
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
-  float lrate   = 3;                          // Learning rate
-  float slength = 1;                        // Minimum step length
+  float lrate   = 0.1;                          // Learning rate
+  float slength = 0.0001;                       // Minimum step length
   int   niter   = 200;                          // Number of iterations
 
   const unsigned int numberOfLevels = 1;        // 1:1 transform

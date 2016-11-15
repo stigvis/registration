@@ -23,7 +23,6 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkIdentityTransform.h"
-#include "itkImageRegionIterator.h"
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"

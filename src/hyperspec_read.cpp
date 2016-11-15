@@ -84,6 +84,7 @@ void hyperspec_read_img(const char *filename){
   // Create image containers
   ImageType::Pointer fixed = imageContainer(header);
   ImageType::Pointer moving = imageContainer(header);
+  ImageType::Pointer output = imageContainer(header);
 
   // Read center image into fixed for registration
   int centerband = header.bands/2;
@@ -93,6 +94,8 @@ void hyperspec_read_img(const char *filename){
       pixelIndex[0] = j;
       pixelIndex[1] = i;
       fixed->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
+      out[j*header.samples*header.bands + centerband*header.samples + j] = 
+                                  img[i*header.samples*header.bands + centerband*header.samples + j];
 		}
 	}
 
@@ -129,31 +132,22 @@ void hyperspec_read_img(const char *filename){
       std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
       registration = registration1( fixed, moving );
     }
- 
-    itk::ImageRegionIterator<ImageType> imageIterator(
-                                      registration->GetOutput(),
-                                      registration->GetOutput()->GetLargestPossibleRegion());
-    while( !imageIterator.IsAtEnd() ){
-      // Get the value of the current pixel
-      for (int j=0; j < header.lines; j++){
-        for (int k=0; k < header.samples; k++){
-          out[j*header.samples*header.bands + i*header.samples + k] = imageIterator.Get();
-          ++imageIterator;
-        }
-      }
-    }
-    /*
+
+    output = registration->GetOutput();
+    output->Update();
+
+
     // Add to output
-    //ImageType::Pointer temp = registration->GetOutput();
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        out[j*header.samples*header.bands + i*header.samples + k] = (registration->GetOutput())->GetPixel(pixelIndex);
+        out[j*header.samples*header.bands + i*header.samples + k] = output->GetPixel(pixelIndex);
+        //std::cout << output->GetPixel( pixelIndex ) << std::endl;
       }
     }
-    */	
+    
     // Add to diff
 
     // Write to file
