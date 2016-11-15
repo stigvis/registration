@@ -23,6 +23,7 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkIdentityTransform.h"
+#include "itkImageRegionIterator.h"
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
@@ -40,22 +41,8 @@ public:
   typedef itk::RegularStepGradientDescentOptimizerv4<double>  OptimizerType;
   typedef const OptimizerType *                               OptimizerPointer;
 
-  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE
-    {
-    Execute( (const itk::Object *)caller, event);
-    }
-
-  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE
-    {
-    OptimizerPointer optimizer = static_cast< OptimizerPointer >( object );
-    if( ! itk::IterationEvent().CheckEvent( &event ) )
-      {
-      return;
-      }
-    std::cout << optimizer->GetCurrentIteration() << "   ";
-    std::cout << optimizer->GetValue() << "   ";
-    std::cout << optimizer->GetCurrentPosition() << std::endl;
-    }
+  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE;
+  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
 };
 
 // Instantiation of input images
@@ -97,7 +84,28 @@ typedef itk::ResampleImageFilter<
 // Set up writer
 typedef itk::ImageFileWriter< ImageType >                   WriterType;
 
+// Generic handlers
+RegistrationType::Pointer registrationContainer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            OptimizerType::Pointer optimizer );
+TransformInitializerType::Pointer initializerContainer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            TransformType::Pointer transform );
+ResampleFilterType::Pointer resamplePointer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            TransformType::Pointer transform );
+RescalerType::Pointer diffFilter(
+                            ImageType* const moving,
+                            ResampleFilterType::Pointer resample );
+
+// Printing parameters
+void finalParameters( TransformType::Pointer transform,
+                      OptimizerType::Pointer optimizer);
+
 // Image registration, type 1
-void registration1( ImageType* const fixed, ImageType* const moving, char argv[] );
+ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* const moving );
 
 #endif // REGISTRATION_H_DEFINED

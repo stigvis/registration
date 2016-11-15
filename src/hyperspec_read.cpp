@@ -18,23 +18,23 @@
 /* TODO:
 
 Read from config file
--> http://www.hyperrealm.com/libconfig/
--> https://en.wikipedia.org/wiki/Configuration_file
+//> http://www.hyperrealm.com/libconfig/
+//> https://en.wikipedia.org/wiki/Configuration_file
 
 Apply gradient of image (DONE)
--> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=(1 2 3))
+//> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=(1 2 3))
 
 Apply registration
--> ITK/Examples/Registration/ImageRegistration6.cxx (DONE)
--> ITK/Examples/Registration/ImageRegistration7.cxx
--> ITK/Examples/Registration/ImageRegistration9.cxx
--> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient)
+//> ITK/Examples/Registration/ImageRegistration6.cxx (DONE)
+//> ITK/Examples/Registration/ImageRegistration7.cxx
+//> ITK/Examples/Registration/ImageRegistration9.cxx
+//> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient)
 
 */
 
 
 // Initiate image container
-ImageType::Pointer imageContainer (struct hyspex_header header){
+ImageType::Pointer imageContainer( struct hyspex_header header ){
   ImageType::RegionType region;
   ImageType::IndexType start;
 
@@ -69,13 +69,17 @@ void hyperspec_read_img(const char *filename){
 	hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
 
 	// Read hyperspectral image
-	float *img = new float[header.samples*header.lines*header.bands]();
+	float *img  = new float[header.samples*header.lines*header.bands]();
 	errcode = hyperspectral_read_image(filename, &header, img);
 	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
 
+  // Float container for output images
+  float *out  = new float[header.samples*header.lines*header.bands]();
+  // Float container for output images that show diff between input and output
+  float *diff = new float[header.samples*header.lines*header.bands]();
 
   // Choose registration method
-  int regmethod = 1; // TODO: Take as input
+  int regmethod = 1; // TODO: Take from config
 
   // Create image containers
   ImageType::Pointer fixed = imageContainer(header);
@@ -96,7 +100,7 @@ void hyperspec_read_img(const char *filename){
   int sigma = 1; // TODO: Take as input
 
   GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
-
+  ResampleFilterType::Pointer registration;
   // Read other images for processing
   for (int i=0; i < header.bands; i++){
     // Skip fixed image
@@ -117,28 +121,55 @@ void hyperspec_read_img(const char *filename){
     char buffer[32];                                        // Filename buffer
     snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
     if (regmethod == 1){
-    registration1( fixed, moving, buffer );
+      registration = registration1( fixed, moving );
     } else if (regmethod == 2){
     } else if (regmethod == 3){
     } else if (regmethod == 4){
     } else {
       std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
-      registration1( fixed, moving, buffer );
+      registration = registration1( fixed, moving );
     }
+ 
+    itk::ImageRegionIterator<ImageType> imageIterator(
+                                      registration->GetOutput(),
+                                      registration->GetOutput()->GetLargestPossibleRegion());
+    while( !imageIterator.IsAtEnd() ){
+      // Get the value of the current pixel
+      for (int j=0; j < header.lines; j++){
+        for (int k=0; k < header.samples; k++){
+          out[j*header.samples*header.bands + i*header.samples + k] = imageIterator.Get();
+          ++imageIterator;
+        }
+      }
+    }
+    /*
+    // Add to output
+    //ImageType::Pointer temp = registration->GetOutput();
+    for (int j=0; j < header.lines; j++){
+      for (int k=0; k < header.samples; k++){
+        ImageType::IndexType pixelIndex;
+        pixelIndex[0] = k;
+        pixelIndex[1] = j;
+        out[j*header.samples*header.bands + i*header.samples + k] = (registration->GetOutput())->GetPixel(pixelIndex);
+      }
+    }
+    */	
+    // Add to diff
 
-  }
-  // Write to file
-
-
-
-	// Write to file
+    // Write to file
 /*	
-	WriterType::Pointer writer = WriterType::New();
-	writer->SetFileName("test.tif");
-	writer->SetInput( gradient->GetOutput());
-	writer->Update();
-*/	
+	  WriterType::Pointer writer = WriterType::New();
+	  writer->SetFileName( buffer );
+	  writer->SetInput( registration->GetOutput() );
+	  writer->Update();
+*/
+  }
 
+  hyperspectral_write_header( "test", header.bands, header.samples, header.lines, header.wlens );
+  hyperspectral_write_image( "test", header.bands, header.samples, header.lines, out );
+
+  delete [] out;
+  delete [] diff;
   delete [] img;
 
 }
