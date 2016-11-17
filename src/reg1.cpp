@@ -8,66 +8,66 @@
 #include "registration.h"
 
 // ===================================
-// Image registration method 3
+// Image registration method 1 
 // ===================================
-ResampleFilterType::Pointer registration3(
-                                        ImageType* const fixed,
+ResampleFilterType::Pointer registration1( 
+                                        ImageType* const fixed, 
                                         ImageType* const moving ){
-  // Initialize parameters (see reg1.cpp for description)
-  // TODO: Read from config
-  float angle     = 0.0;
-  float scale     = 1.0;
-  float lrate     = 1.0;
-  float slength   = 0.0001;
-  int   niter     = 300;
 
-  const unsigned int numberOfLevels = 1;
+  // Initialize parameters
+  // TODO: Read parameters from config
+  float angle   = 0.0;                          // Transform angle
+  float lrate   = 0.1;                          // Learning rate
+  float slength = 0.0001;                       // Minimum step length
+  int   niter   = 200;                          // Number of iterations
+
+  const unsigned int numberOfLevels = 1;        // 1:1 transform
   const double translationScale = 1.0 / 1000.0;
 
   // Optimizer and Registration containers
-  OptimizerType::Pointer          optimizer     = OptimizerType::New();
-  RegistrationAffineType::Pointer registration  = registrationAffineContainer(
+  OptimizerType::Pointer      optimizer     = OptimizerType::New();
+  RegistrationType::Pointer registration = registrationContainer(
                                         fixed,
                                         moving,
                                         optimizer );
 
   // Construction of the transform object
-  TransformAffineType::Pointer    transform     = TransformAffineType::New();
-  TransformAffineInitializerType::Pointer initializer = initializerAffineContainer(
+  TransformType::Pointer  transform = TransformType::New();
+  TransformInitializerType::Pointer initializer = initializerContainer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Set parameters
-//  transform->SetScale( scale );
-//  transform->SetAngle( angle );
+  transform->SetAngle( angle );
 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
-  optimizerScales[0] =  1.0;
-  optimizerScales[1] =  1.0;
-  optimizerScales[2] =  1.0;
-  optimizerScales[3] =  1.0;
-  optimizerScales[4] =  translationScale;
-  optimizerScales[5] =  translationScale;
+  optimizerScales[0] = 1.0;
+  optimizerScales[1] = translationScale;
+  optimizerScales[2] = translationScale;
+  optimizerScales[3] = translationScale;
+  optimizerScales[4] = translationScale;
 
-  optimizer->SetScales(   optimizerScales   );
-  optimizer->SetLearningRate(     lrate     );
-  optimizer->SetMinimumStepLength( slength  );
-  optimizer->SetNumberOfIterations( niter   );
+  optimizer->SetScales(   optimizerScales  );
+  optimizer->SetLearningRate(     lrate    );
+  optimizer->SetMinimumStepLength( slength );
+  optimizer->SetNumberOfIterations( niter  );
 
+  // Create the command observer and register it with the optimizer
   CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
   optimizer->AddObserver( itk::IterationEvent(), observer );
 
+  // Optional: Shrinking and/or smoothing, set to 0
   RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
   shrinkFactorsPerLevel.SetSize( 1 );
   shrinkFactorsPerLevel[0] = 1;
 
   RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize( 1 );
+  smoothingSigmasPerLevel.SetSize ( 1 );
   smoothingSigmasPerLevel[0] = 0;
 
   registration->SetNumberOfLevels(          numberOfLevels          );
@@ -88,14 +88,13 @@ ResampleFilterType::Pointer registration3(
   }
 
   // Resample new image
-  ResampleFilterType::Pointer resample = resampleAffinePointer(
+  ResampleFilterType::Pointer resample = resamplePointer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Print results
-  finalAffineParameters(transform, optimizer );
+  finalParameters( transform, optimizer );
 
   return resample;
-
-}
+};

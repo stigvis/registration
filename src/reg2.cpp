@@ -8,49 +8,49 @@
 #include "registration.h"
 
 // ===================================
-// Image registration method 3
+// Image registration method 2
 // ===================================
-ResampleFilterType::Pointer registration3(
+ResampleFilterType::Pointer registration2(
                                         ImageType* const fixed,
                                         ImageType* const moving ){
   // Initialize parameters (see reg1.cpp for description)
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 1.0;
+  float lrate     = 4;
   float slength   = 0.0001;
-  int   niter     = 300;
+  int   niter     = 500;
 
   const unsigned int numberOfLevels = 1;
-  const double translationScale = 1.0 / 1000.0;
+  const double translationScale = 1.0 / 100.0;
 
   // Optimizer and Registration containers
-  OptimizerType::Pointer          optimizer     = OptimizerType::New();
-  RegistrationAffineType::Pointer registration  = registrationAffineContainer(
+  OptimizerType::Pointer    optimizer     = OptimizerType::New();
+  Registration2Type::Pointer registration  = registration2Container(
                                         fixed,
                                         moving,
                                         optimizer );
 
   // Construction of the transform object
-  TransformAffineType::Pointer    transform     = TransformAffineType::New();
-  TransformAffineInitializerType::Pointer initializer = initializerAffineContainer(
+  Transform2Type::Pointer    transform     = Transform2Type::New();
+  Transform2InitializerType::Pointer initializer = initializer2Container(
                                         fixed,
                                         moving,
                                         transform );
 
   // Set parameters
-//  transform->SetScale( scale );
-//  transform->SetAngle( angle );
+  transform->SetScale( scale );
+  transform->SetAngle( angle );
 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
-  optimizerScales[0] =  1.0;
+  optimizerScales[0] = 10.0;
   optimizerScales[1] =  1.0;
-  optimizerScales[2] =  1.0;
-  optimizerScales[3] =  1.0;
+  optimizerScales[2] =  translationScale;
+  optimizerScales[3] =  translationScale;
   optimizerScales[4] =  translationScale;
   optimizerScales[5] =  translationScale;
 
@@ -88,13 +88,13 @@ ResampleFilterType::Pointer registration3(
   }
 
   // Resample new image
-  ResampleFilterType::Pointer resample = resampleAffinePointer(
+  ResampleFilterType::Pointer resample = resample2Pointer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Print results
-  finalAffineParameters(transform, optimizer );
+  final2Parameters(transform, optimizer );
 
   return resample;
 

@@ -54,6 +54,22 @@ Registration2Type::Pointer registration2Container(
   return registration;
 }
 
+// Initialize registration container with mask
+RegistrationType::Pointer registrationMaskContainer(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      MetricType::Pointer metric,
+                                      OptimizerType::Pointer optimizer  ){
+
+  RegistrationType::Pointer  registration  = RegistrationType::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
 // Initialize registration container with TransformAffineType
 RegistrationAffineType::Pointer registrationAffineContainer(
                                       ImageType* const fixed,
@@ -266,8 +282,7 @@ void final2Parameters( Transform2Type::Pointer transform,
 void finalAffineParameters( TransformAffineType::Pointer transform,
                             OptimizerType::Pointer optimizer ){
 
-  const TransformAffineType::ParametersType finalParameters =
-              registration->GetOutput()->Get()->GetParameters();
+  const TransformAffineType::ParametersType finalParameters = transform->GetParameters();
 
   const double finalRotationCenterX = transform->GetCenter()[0];
   const double finalRotationCenterY = transform->GetCenter()[1];
@@ -304,4 +319,4 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
   std::cout << " Scale 1         = " << svd.W(0)        << std::endl;
   std::cout << " Scale 2         = " << svd.W(1)        << std::endl;
   std::cout << " Angle (degrees) = " << angleInDegrees  << std::endl;
-
+}

@@ -31,6 +31,8 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkIdentityTransform.h"
+#include "itkSquaredDifferenceImageFilter.h"
+#include "itkImageMaskSpatialObject.h"
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
@@ -55,11 +57,13 @@ public:
 // Instantiation of input images
 const   unsigned int  Dimension = 2;
 typedef float         PixelType;
+typedef unsigned char CharPixelType;
 
 typedef itk::Image< PixelType, Dimension >                  ImageType;
+typedef itk::Image< CharPixelType, Dimension >              GradientType;
 typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
                             ImageType,
-                            ImageType >                     GradientFilterType;
+                            GradientType >                  GradientFilterType;
 
 
 // Instantiation of transform types
@@ -90,7 +94,8 @@ typedef itk::MeanSquaresImageToImageMetricv4<
 
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
-                            ImageType >                     RegistrationType;
+                            ImageType,
+                            TransformType >                 RegistrationType;
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
@@ -110,6 +115,9 @@ typedef itk::RescaleIntensityImageFilter<
 typedef itk::ResampleImageFilter<
                             ImageType,
                             ImageType >                     ResampleFilterType;
+typedef itk::ImageMaskSpatialObject<
+                            Dimension >                     MaskType;
+
 // Set up writer
 typedef itk::ImageFileWriter< ImageType >                   WriterType;
 
@@ -121,6 +129,11 @@ RegistrationType::Pointer registrationContainer(
 Registration2Type::Pointer registration2Container(
                             ImageType* const fixed,
                             ImageType* const moving,
+                            OptimizerType::Pointer optimizer );
+RegistrationType::Pointer registrationMaskContainer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            MetricType::Pointer metric,
                             OptimizerType::Pointer optimizer );
 RegistrationAffineType::Pointer registrationAffineContainer(
                             ImageType* const fixed,
@@ -134,7 +147,7 @@ Transform2InitializerType::Pointer initializer2Container(
                             ImageType* const fixed,
                             ImageType* const moving,
                             Transform2Type::Pointer transform );
-Transform2InitializerType::Pointer initializerAffineContainer(
+TransformAffineInitializerType::Pointer initializerAffineContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             TransformAffineType::Pointer transform );
@@ -166,5 +179,6 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
 ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* const moving );
 ResampleFilterType::Pointer registration2( ImageType* const fixed, ImageType* const moving );
 ResampleFilterType::Pointer registration3( ImageType* const fixed, ImageType* const moving );
+ResampleFilterType::Pointer registration4( ImageType* const fixed, ImageType* const moving, ImageType* const mask );
 
 #endif // REGISTRATION_H_DEFINED
