@@ -82,9 +82,10 @@ void hyperspec_read_img(const char *filename){
   int regmethod = 1; // TODO: Take from config
 
   // Create image containers
-  ImageType::Pointer fixed = imageContainer(header);
-  ImageType::Pointer moving = imageContainer(header);
-  ImageType::Pointer output = imageContainer(header);
+  ImageType::Pointer fixed    = imageContainer(header);
+  ImageType::Pointer moving   = imageContainer(header);
+  ImageType::Pointer output   = imageContainer(header);
+  ImageType::Pointer outdiff  = imageContainer(header);
 
   // Read center image into fixed for registration
   int centerband = header.bands/2;
@@ -94,7 +95,7 @@ void hyperspec_read_img(const char *filename){
       pixelIndex[0] = j;
       pixelIndex[1] = i;
       fixed->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
-      out[j*header.samples*header.bands + centerband*header.samples + j] = 
+      out[j*header.samples*header.bands + centerband*header.samples + j] =
                                   img[i*header.samples*header.bands + centerband*header.samples + j];
 		}
 	}
@@ -104,6 +105,10 @@ void hyperspec_read_img(const char *filename){
 
   GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
   ResampleFilterType::Pointer registration;
+
+  // Create and choose diffoutput
+  int diff_conf = 1; // TODO: Take as input
+
   // Read other images for processing
   for (int i=0; i < header.bands; i++){
     // Skip fixed image
@@ -121,21 +126,27 @@ void hyperspec_read_img(const char *filename){
     }
 
     // Throw to registration handler
-    char buffer[32];                                        // Filename buffer
-    snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
+   // char buffer[32];                                        // Filename buffer
+   // snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
     if (regmethod == 1){
       registration = registration1( fixed, moving );
     } else if (regmethod == 2){
+      registration = registration2( fixed, moving );
     } else if (regmethod == 3){
     } else if (regmethod == 4){
     } else {
       std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
-      registration = registration1( fixed, moving );
+      registration = registration1( fixed, moving ); // See registration.cpp
     }
 
     output = registration->GetOutput();
     output->Update();
 
+    RescalerType::Pointer difference = diffFilter(
+                                           moving,
+                                           registration ); // See registration.cpp
+    outdiff = difference->GetOutput();
+    outdiff->Update();
 
     // Add to output
     for (int j=0; j < header.lines; j++){
@@ -144,10 +155,16 @@ void hyperspec_read_img(const char *filename){
         pixelIndex[0] = k;
         pixelIndex[1] = j;
         out[j*header.samples*header.bands + i*header.samples + k] = output->GetPixel(pixelIndex);
-        //std::cout << output->GetPixel( pixelIndex ) << std::endl;
+    
+        // Compute the difference between the images before and after registration
+        // (If we want a visible diff-image)
+        if ( diff_conf == 1 ){ // TODO: Take from config
+          diff[j*header.samples*header.bands + i*header.samples + k] = outdiff->GetPixel(pixelIndex);
+
+        }
       }
     }
-    
+
     // Add to diff
 
     // Write to file
@@ -157,10 +174,12 @@ void hyperspec_read_img(const char *filename){
 	  writer->SetInput( registration->GetOutput() );
 	  writer->Update();
 */
+    std::cout << "Progress: Done with " << i+1 << " of " << header.bands << std::endl;
   }
 
   hyperspectral_write_header( "test", header.bands, header.samples, header.lines, header.wlens );
-  hyperspectral_write_image( "test", header.bands, header.samples, header.lines, out );
+  hyperspectral_write_image( "test_out", header.bands, header.samples, header.lines, out );
+  hyperspectral_write_image( "test_diff", header.bands, header.samples, header.lines, diff );
 
   delete [] out;
   delete [] diff;

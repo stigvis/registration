@@ -1,3 +1,10 @@
+//==========================================================================
+// Copyright 2016 Stig Viste, Norwegian University of Science and Technology
+// Distributed under the MIT License.
+// (See accompanying file LICENSE or copy at
+// http://opensource.org/licenses/MIT
+// =========================================================================
+
 #include "registration.h"
 
 // Keeping track of the iterations
@@ -31,7 +38,39 @@ RegistrationType::Pointer registrationContainer(
   return registration;
 }
 
-// Initialize initializer container
+// Initialize registration container with Transform2Type
+Registration2Type::Pointer registration2Container(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      OptimizerType::Pointer optimizer  ){
+
+  MetricType::Pointer         metric        = MetricType::New();
+  Registration2Type::Pointer  registration  = Registration2Type::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
+// Initialize registration container with TransformAffineType
+RegistrationAffineType::Pointer registrationAffineContainer(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      OptimizerType::Pointer optimizer  ){
+
+  MetricType::Pointer         metric        = MetricType::New();
+  RegistrationAffineType::Pointer  registration  = RegistrationAffineType::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
+// Initialize initializer container with rigid transform
 TransformInitializerType::Pointer initializerContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
@@ -53,7 +92,51 @@ TransformInitializerType::Pointer initializerContainer(
   return initializer;
 }
 
-// Resample moving image with transform
+// Initialize initializer container with similarity transform
+Transform2InitializerType::Pointer initializer2Container(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      Transform2Type::Pointer transform ){
+
+  Transform2InitializerType::Pointer initializer =
+                                      Transform2InitializerType::New();
+
+  // Initializer is now connected to the transform and to the fixed and moving images
+  initializer->SetTransform(   transform  );
+  initializer->SetFixedImage(   fixed     );
+  initializer->SetMovingImage(  moving    );
+
+  // Select center of mass mode
+  initializer->MomentsOn();
+
+  // Compute the center and translation
+  initializer->InitializeTransform();
+  return initializer;
+}
+
+// Initialize initializer container with similarity transform
+TransformAffineInitializerType::Pointer initializerAffineContainer(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      TransformAffineType::Pointer transform ){
+
+  TransformAffineInitializerType::Pointer initializer =
+                                      TransformAffineInitializerType::New();
+
+  // Initializer is now connected to the transform and to the fixed and moving images
+  initializer->SetTransform(   transform  );
+  initializer->SetFixedImage(   fixed     );
+  initializer->SetMovingImage(  moving    );
+
+  // Select center of mass mode
+  initializer->MomentsOn();
+
+  // Compute the center and translation
+  initializer->InitializeTransform();
+  return initializer;
+}
+
+// Resample moving image with rigid transform
 ResampleFilterType::Pointer resamplePointer(
                                       ImageType* const moving,
                                       ImageType* const fixed,
@@ -65,6 +148,40 @@ ResampleFilterType::Pointer resamplePointer(
   resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
   resample->SetOutputOrigin(        fixed->GetOrigin()            );
   resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetDefaultPixelValue(               0.0               ); // ?
+  return resample;
+}
+
+// Resample moving image with similarity transform
+ResampleFilterType::Pointer resample2Pointer(
+                                      ImageType* const moving,
+                                      ImageType* const fixed,
+                                      Transform2Type::Pointer transform ){
+  ResampleFilterType::Pointer resample = ResampleFilterType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetOutputDirection(     fixed->GetDirection()         );
+  resample->SetDefaultPixelValue(               0.0               ); // ?
+  return resample;
+}
+
+// Resample moving image with similarity transform
+ResampleFilterType::Pointer resampleAffinePointer(
+                                      ImageType* const moving,
+                                      ImageType* const fixed,
+                                      TransformAffineType::Pointer transform ){
+  ResampleFilterType::Pointer resample = ResampleFilterType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetOutputDirection(     fixed->GetDirection()         );
   resample->SetDefaultPixelValue(               0.0               ); // ?
   return resample;
 }
@@ -87,7 +204,7 @@ RescalerType::Pointer diffFilter(
   return intensityRescaler;
 }
 
-// Print results
+// Print results from rigid transform
 void finalParameters( TransformType::Pointer transform,
                       OptimizerType::Pointer optimizer ){
   TransformType::ParametersType finalParameters = transform->GetParameters();
@@ -116,109 +233,75 @@ void finalParameters( TransformType::Pointer transform,
 
 }
 
-//-------------------------------------------------------------------------------------------
-// Bilderegistreringsmetode numero uno
-//-------------------------------------------------------------------------------------------
-ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* const moving ){
+// Print results from similarity transform
+void final2Parameters( Transform2Type::Pointer transform,
+                      OptimizerType::Pointer optimizer ){
+  Transform2Type::ParametersType finalParameters = transform->GetParameters();
 
-  // Initialize parameters
-  // TODO: Read parameters from config
-  float angle   = 0.0;                          // Transform angle
-  float lrate   = 0.1;                          // Learning rate
-  float slength = 0.0001;                       // Minimum step length
-  int   niter   = 200;                          // Number of iterations
+  const double finalAngle           = finalParameters[0];
+  const double finalRotationCenterX = finalParameters[1];
+  const double finalRotationCenterY = finalParameters[2];
+  const double finalTranslationX    = finalParameters[3];
+  const double finalTranslationY    = finalParameters[4];
 
-  const unsigned int numberOfLevels = 1;        // 1:1 transform
-  const double translationScale = 1.0 / 1000.0;
-
-  // Optimizer and Registration containers
-  OptimizerType::Pointer      optimizer     = OptimizerType::New();
-  RegistrationType::Pointer registration = registrationContainer(
-                                        fixed,
-                                        moving,
-                                        optimizer );
-
-  // Construction of the transform object
-  TransformType::Pointer  transform = TransformType::New();
-  TransformInitializerType::Pointer initializer = initializerContainer(
-                                        fixed,
-                                        moving,
-                                        transform );
-
-  // Set parameters
-  transform->SetAngle( angle );
-
-  registration->SetInitialTransform( transform );
-  registration->InPlaceOn();
-
-  OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
-
-  optimizerScales[0] = 1.0;
-  optimizerScales[1] = translationScale;
-  optimizerScales[2] = translationScale;
-  optimizerScales[3] = translationScale;
-  optimizerScales[4] = translationScale;
-
-  optimizer->SetScales(   optimizerScales  );
-  optimizer->SetLearningRate(     lrate    );
-  optimizer->SetMinimumStepLength( slength );
-  optimizer->SetNumberOfIterations( niter  );
-
-  // Create the command observer and register it with the optimizer
-  CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
-  optimizer->AddObserver( itk::IterationEvent(), observer );
-
-  // Optional: Shrinking and/or smoothing, set to 0
-  RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-  shrinkFactorsPerLevel.SetSize( 1 );
-  shrinkFactorsPerLevel[0] = 1;
-
-  RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize ( 1 );
-  smoothingSigmasPerLevel[0] = 0;
-
-  registration->SetNumberOfLevels(          numberOfLevels          );
-  registration->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel );
-  registration->SetShrinkFactorsPerLevel(   shrinkFactorsPerLevel   );
-
-  try {
-    registration->Update();
-    std::cout << "Optimizer stop condition: "
-              << registration->GetOptimizer()->GetStopConditionDescription()
-              << std::endl;
-  }
-  catch( itk::ExceptionObject & err ){
-    std::cerr << "ExceptionObject caught !" << std::endl;
-    std::cerr << err << std::endl;
-    exit(1);
-  }
-
-  // Resample new image
-  ResampleFilterType::Pointer resample = resamplePointer(
-                                        fixed,
-                                        moving,
-                                        transform );
+  const unsigned int  numberOfIterations = optimizer->GetCurrentIteration();
+  const double        bestValue          = optimizer->GetValue();
 
   // Print results
-  finalParameters( transform, optimizer );
+  const double finalAngleInDegrees = finalAngle * 180.0 / itk::Math::pi;
 
+  std::cout << "Result = " << std::endl;
+  std::cout << " Angle (radians) " << finalAngle  << std::endl;
+  std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
+  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << " Translation X = " << finalTranslationX  << std::endl;
+  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << " Iterations    = " << numberOfIterations << std::endl;
+  std::cout << " Metric value  = " << bestValue          << std::endl;
 
-  // Compute the difference between the images before and after registration
-  // We want a visible diff-image
-  RescalerType::Pointer difference = diffFilter(
-                                        moving,
-                                        resample );
-/*
-  WriterType::Pointer     writerdiff        =  WriterType::New();
-  writerdiff->SetInput( difference->GetOutput()  );
+}
 
-  // Write the transform
+// Print results from affine transform
+void finalAffineParameters( TransformAffineType::Pointer transform,
+                            OptimizerType::Pointer optimizer ){
 
-  WriterType::Pointer     writer = WriterType::New();
+  const TransformAffineType::ParametersType finalParameters =
+              registration->GetOutput()->Get()->GetParameters();
 
-  writer->SetFileName( &argv[3] );
-  writer->SetInput( resample->GetOutput() );
-  writer->Update();
-*/
-  return resample;
-};
+  const double finalRotationCenterX = transform->GetCenter()[0];
+  const double finalRotationCenterY = transform->GetCenter()[1];
+  const double finalTranslationX    = finalParameters[4];
+  const double finalTranslationY    = finalParameters[5];
+
+  const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
+  const double bestValue = optimizer->GetValue();
+
+  std::cout << "Result = " << std::endl;
+  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << " Translation X = " << finalTranslationX  << std::endl;
+  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << " Iterations    = " << numberOfIterations << std::endl;
+  std::cout << " Metric value  = " << bestValue          << std::endl;
+
+  //Compute the rotation angle and scaling from SVD of the matrix
+  // \todo Find a way to figure out if the scales are along X or along Y.
+  // VNL returns the eigenvalues ordered from largest to smallest.
+
+  vnl_matrix<double> p(2, 2);
+  p[0][0] = (double) finalParameters[0];
+  p[0][1] = (double) finalParameters[1];
+  p[1][0] = (double) finalParameters[2];
+  p[1][1] = (double) finalParameters[3];
+  vnl_svd<double> svd(p);
+  vnl_matrix<double> r(2, 2);
+  r = svd.U() * vnl_transpose(svd.V());
+  double angle = std::asin(r[1][0]);
+
+  const double angleInDegrees = angle * 180.0 / itk::Math::pi;
+
+  std::cout << " Scale 1         = " << svd.W(0)        << std::endl;
+  std::cout << " Scale 2         = " << svd.W(1)        << std::endl;
+  std::cout << " Angle (degrees) = " << angleInDegrees  << std::endl;
+
