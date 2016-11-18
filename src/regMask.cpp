@@ -13,22 +13,22 @@
 ResampleFilterType::Pointer registration4(
                                         ImageType* const fixed,
                                         ImageType* const moving,
-                                        GradientFilterType::Pointer gradient ){
+                                        CharImageType* const gradient ){
   // Initialize parameters (see reg1.cpp for description)
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
   float lrate     = 1.0;
-  float slength   = 0.0001;
+  float slength   = 0.001;
   int   niter     = 200;
 
   const unsigned int numberOfLevels = 1;
   const double translationScale = 1.0 / 1000.0;
 
   // Optimizer and Registration containers
-  MetricType::Pointer       metric        = MetricType::New();
-  OptimizerType::Pointer    optimizer     = OptimizerType::New();
-  RegistrationType::Pointer registration  = registrationMaskContainer(
+  MetricType::Pointer         metric        = MetricType::New();
+  OptimizerType::Pointer      optimizer     = OptimizerType::New();
+  RegistrationType::Pointer 	registration  = registrationMaskContainer(
                                         fixed,
                                         moving,
                                         metric,
@@ -41,12 +41,11 @@ ResampleFilterType::Pointer registration4(
                                         moving,
                                         transform );
 
+
   // Set parameters
-  //transform->SetScale( scale );
   transform->SetAngle( angle );
 
-  registration->SetMetric(        metric        );
-  registration->SetInitialTransform( transform  );
+  registration->SetInitialTransform(  	transform  			);
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
@@ -56,7 +55,6 @@ ResampleFilterType::Pointer registration4(
   optimizerScales[2] =  translationScale;
   optimizerScales[3] =  translationScale;
   optimizerScales[4] =  translationScale;
-  optimizerScales[5] =  translationScale;
 
   optimizer->SetScales(   optimizerScales   );
   optimizer->SetLearningRate(     lrate     );
@@ -69,7 +67,7 @@ ResampleFilterType::Pointer registration4(
   // Apply mask
   MaskType::Pointer    spatialObjectMask  = MaskType::New();
 
-  spatialObjectMask->SetImage( gradient->GetOutput() );
+  spatialObjectMask->SetImage( gradient );
   metric->SetFixedImageMask( spatialObjectMask );
 
   RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
@@ -104,7 +102,7 @@ ResampleFilterType::Pointer registration4(
                                         transform );
 
   // Print results
-  finalParameters(transform, optimizer );
+  finalMaskParameters(transform, registration, optimizer );
 
   return resample;
 

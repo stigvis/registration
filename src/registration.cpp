@@ -60,13 +60,13 @@ RegistrationType::Pointer registrationMaskContainer(
                                       ImageType* const moving,
                                       MetricType::Pointer metric,
                                       OptimizerType::Pointer optimizer  ){
+	
+  RegistrationType::Pointer  	    registration  = RegistrationType::New();
 
-  RegistrationType::Pointer  registration  = RegistrationType::New();
-
-  registration->SetMetric(      metric    );
-  registration->SetOptimizer(   optimizer );
-  registration->SetFixedImage(    fixed   );
-  registration->SetMovingImage(   moving  );
+  registration->SetMetric(      	metric    	);
+  registration->SetOptimizer(   	optimizer 	);
+  registration->SetFixedImage(    	fixed   	);
+  registration->SetMovingImage(   	moving  	);
   return registration;
 }
 
@@ -319,4 +319,30 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
   std::cout << " Scale 1         = " << svd.W(0)        << std::endl;
   std::cout << " Scale 2         = " << svd.W(1)        << std::endl;
   std::cout << " Angle (degrees) = " << angleInDegrees  << std::endl;
+}
+
+// Print results from mask transform
+void finalMaskParameters( TransformType::Pointer transform,
+													RegistrationType::Pointer registration,
+													OptimizerType::Pointer optimizer ){
+	OptimizerType::ParametersType finalParameters =
+                    transform->GetParameters();
+  const double finalAngle           = finalParameters[0];
+  const double finalRotationCenterX = finalParameters[1];
+  const double finalRotationCenterY = finalParameters[2];
+  const double finalTranslationX    = finalParameters[3];
+  const double finalTranslationY    = finalParameters[4];
+  const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
+  const double bestValue = optimizer->GetValue();
+  const double finalAngleInDegrees = finalAngle * 45.0 / std::atan(1.0);
+  
+	std::cout << "Result = " << std::endl;
+  std::cout << " Angle (radians) " << finalAngle  << std::endl;
+  std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
+  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << " Translation X = " << finalTranslationX  << std::endl;
+  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << " Iterations    = " << numberOfIterations << std::endl;
+  std::cout << " Metric value  = " << bestValue          << std::endl;
 }

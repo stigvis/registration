@@ -19,6 +19,7 @@ void hyperspec_read_mat( const char *filename );
 
 ImageType::Pointer imageContainer( struct hyspex_header header );
 
-GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ); 
+GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma );
+CastFilterType::Pointer castImage( ImageType* const img );
 
 #endif // HYPERSPEC_READ_H_DEFINED

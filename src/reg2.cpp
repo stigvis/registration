@@ -17,7 +17,7 @@ ResampleFilterType::Pointer registration2(
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 4;
+  float lrate     = 1;
   float slength   = 0.0001;
   int   niter     = 500;
 

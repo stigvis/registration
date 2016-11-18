@@ -60,10 +60,10 @@ typedef float         PixelType;
 typedef unsigned char CharPixelType;
 
 typedef itk::Image< PixelType, Dimension >                  ImageType;
-typedef itk::Image< CharPixelType, Dimension >              GradientType;
+typedef itk::Image< CharPixelType, Dimension >              CharImageType;
 typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
                             ImageType,
-                            GradientType >                  GradientFilterType;
+                            ImageType >                     GradientFilterType;
 
 
 // Instantiation of transform types
@@ -117,6 +117,15 @@ typedef itk::ResampleImageFilter<
                             ImageType >                     ResampleFilterType;
 typedef itk::ImageMaskSpatialObject<
                             Dimension >                     MaskType;
+typedef itk:: LinearInterpolateImageFunction<
+                            ImageType,
+                            double >    										InterpolatorType;
+
+// Image casting, because masking only supports unsigned char
+typedef itk::CastImageFilter<
+                            ImageType,
+                            CharImageType >                 CastFilterType;
+
 
 // Set up writer
 typedef itk::ImageFileWriter< ImageType >                   WriterType;
@@ -174,11 +183,16 @@ void final2Parameters( Transform2Type::Pointer transform,
                       OptimizerType::Pointer optimizer);
 void finalAffineParameters( TransformAffineType::Pointer transform,
                       OptimizerType::Pointer optimizer);
+void finalMaskParameters( TransformType::Pointer transform,
+													RegistrationType::Pointer registration,
+													OptimizerType::Pointer optimizer );
 
 // Image registrations
 ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* const moving );
 ResampleFilterType::Pointer registration2( ImageType* const fixed, ImageType* const moving );
 ResampleFilterType::Pointer registration3( ImageType* const fixed, ImageType* const moving );
-ResampleFilterType::Pointer registration4( ImageType* const fixed, ImageType* const moving, ImageType* const mask );
+ResampleFilterType::Pointer registration4(  ImageType* const fixed, 
+                                            ImageType* const moving, 
+                                            CharImageType* const gradient );
 
 #endif // REGISTRATION_H_DEFINED

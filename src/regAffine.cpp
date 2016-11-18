@@ -17,7 +17,7 @@ ResampleFilterType::Pointer registration3(
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 1.0;
+  float lrate     = 0.1;
   float slength   = 0.0001;
   int   niter     = 300;
 
@@ -39,8 +39,7 @@ ResampleFilterType::Pointer registration3(
                                         transform );
 
   // Set parameters
-//  transform->SetScale( scale );
-//  transform->SetAngle( angle );
+  //transform->SetAngle( angle );
 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
