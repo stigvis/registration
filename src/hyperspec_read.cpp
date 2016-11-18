@@ -26,9 +26,9 @@ Apply gradient of image (DONE)
 
 Apply registration
 //> ITK/Examples/Registration/ImageRegistration6.cxx (DONE)
-//> ITK/Examples/Registration/ImageRegistration7.cxx
-//> ITK/Examples/Registration/ImageRegistration9.cxx
-//> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient)
+//> ITK/Examples/Registration/ImageRegistration7.cxx (DONE)
+//> ITK/Examples/Registration/ImageRegistration9.cxx (DONE)
+//> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient) (ERROR)
 
 */
 
@@ -57,7 +57,7 @@ ImageType::Pointer imageContainer( struct hyspex_header header ){
 // Gradient filter
 GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
   GradientFilterType::Pointer gradient = GradientFilterType::New();
-  
+
   gradient->SetSigma( sigma );
   gradient->SetInput( fixed );
   //gradient->Update();
@@ -67,7 +67,7 @@ GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
 
 // Cast float to unsigned char
 CastFilterType::Pointer castImage( ImageType* const img ){
-  
+
   CastFilterType::Pointer castFilter = CastFilterType::New();
   castFilter->SetInput( img );
 
@@ -92,7 +92,7 @@ void hyperspec_read_img(const char *filename){
   float *diff = new float[header.samples*header.lines*header.bands]();
 
   // Choose registration method
-  int regmethod = 3; // TODO: Take from config
+  int regmethod = 1; // TODO: Take from config
 
   // Create image containers
   ImageType::Pointer fixed    = imageContainer(header);
@@ -120,43 +120,34 @@ void hyperspec_read_img(const char *filename){
   GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
   CastFilterType::Pointer castFixed     = castImage( fixed );
   CastFilterType::Pointer castGradient  = castImage( gradient->GetOutput() );
-  
+
   ResampleFilterType::Pointer registration;
 
   // Create and choose diffoutput
   int diff_conf = 1; // TODO: Take as input
 
   // Read images for processing
-  int centerband = header.bands/2;
-  for (int i=centerband; i < header.bands; i++){
-    // Skip fixed image
-    if ( i == centerband ){
-      for (int j=0; j < header.lines; j++){
-        for (int k=0; k < header.samples; k++){
-          ImageType::IndexType pixelIndex;
-          pixelIndex[0] = k;
-          pixelIndex[1] = j;
-          out[j*header.samples*header.bands + i*header.samples + k] =
-                                  img[j*header.samples*header.bands + i*header.samples + k];
-        }
-      }
-      continue;
-    }
-
+  // Image i=0 is fixed
+  for (int i=1; i < header.bands; i++){
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
-        // Fixed is now image before moving
+        if (i == 1){
+          fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
+          out[j*header.samples*header.bands + (i-1)*header.samples + k] =
+                                      img[j*header.samples*header.bands + (i-1)*header.samples + k];
+        }
         moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
       }
     }
 
+    if (i != 1){
+      fixed = output;
+    }
+
    // Throw to registration handler
-   // char buffer[32];                                        // Filename buffer
-   // snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
     if (regmethod == 1){
       registration = registration1( fixed, moving );
     } else if (regmethod == 2){
@@ -169,21 +160,19 @@ void hyperspec_read_img(const char *filename){
                                     moving, //castMoving->GetOutput(),
                                     castGradient->GetOutput() ); // See registration.cpp
     } else {
-      std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
-      CastFilterType::Pointer castMoving = castImage ( moving );
-      registration = registration4( fixed, //castFixed->GetOutput(),
-                                    moving, //castMoving->GetOutput(),
-                                    castGradient->GetOutput() ); // See registration.cpp
+      std::cout << "Specify a method from 1-4. Falling back to method 3, Affine" << std::endl;
+      registration = registration3( fixed, moving );
     }
 
+    std::cout << "Done with " << i << " of " << header.bands << std::endl;
     output = registration->GetOutput();
     output->Update();
 
-    RescalerType::Pointer difference = diffFilter(
+    DifferenceFilterType::Pointer difference = diffFilter(
                                            moving,
                                            registration ); // See registration.cpp
-    outdiff = difference->GetOutput();
-    outdiff->Update();
+    //outdiff = difference->GetOutput();
+    //outdiff->Update();
 
     // Add to output
     for (int j=0; j < header.lines; j++){
@@ -201,80 +190,6 @@ void hyperspec_read_img(const char *filename){
         }
       }
     }
-  }
-
-    // Add to diff
-  for (int i = ( centerband - 1 ); i > 0; i--){
-
-    for (int j=0; j < header.lines; j++){
-      for (int k=0; k < header.samples; k++){
-        ImageType::IndexType pixelIndex;
-        pixelIndex[0] = k;
-        pixelIndex[1] = j;
-        fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i+1)*header.samples + k]);
-        // Fixed is now image before moving
-        moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
-      }
-    }
-
-   // Throw to registration handler
-   // char buffer[32];                                        // Filename buffer
-   // snprintf(buffer, sizeof(char) * 32, "output%i.tif", i); // Recursive filenames
-    if (regmethod == 1){
-      registration = registration1( fixed, moving );
-    } else if (regmethod == 2){
-      registration = registration2( fixed, moving );
-    } else if (regmethod == 3){
-      registration = registration3( fixed, moving );
-    } else if (regmethod == 4){
-      CastFilterType::Pointer castMoving = castImage ( moving );
-      registration = registration4( fixed, //castFixed->GetOutput(),
-                                    moving, //castMoving->GetOutput(),
-                                    castGradient->GetOutput() ); // See registration.cpp
-    } else {
-      std::cout << "Specify a method from 1-4. Falling back to method 4" << std::endl;
-      CastFilterType::Pointer castMoving = castImage ( moving );
-      registration = registration4( fixed, //castFixed->GetOutput(),
-                                    moving, //castMoving->GetOutput(),
-                                    castGradient->GetOutput() ); // See registration.cpp
-    }
-
-    output = registration->GetOutput();
-    output->Update();
-
-    RescalerType::Pointer difference = diffFilter(
-                                           moving,
-                                           registration ); // See registration.cpp
-    outdiff = difference->GetOutput();
-    outdiff->Update();
-
-    // Add to output
-    for (int j=0; j < header.lines; j++){
-      for (int k=0; k < header.samples; k++){
-        ImageType::IndexType pixelIndex;
-        pixelIndex[0] = k;
-        pixelIndex[1] = j;
-        out[j*header.samples*header.bands + i*header.samples + k] = output->GetPixel(pixelIndex);
-
-        // Compute the difference between the images before and after registration
-        // (If we want a visible diff-image)
-        if ( diff_conf == 1 ){ // TODO: Take from config
-          diff[j*header.samples*header.bands + i*header.samples + k] = outdiff->GetPixel(pixelIndex);
-
-        }
-      }
-    }
-
-    // Add to diff
-
-    // Write to file
-/*
-	  WriterType::Pointer writer = WriterType::New();
-	  writer->SetFileName( buffer );
-	  writer->SetInput( registration->GetOutput() );
-	  writer->Update();
-*/
-    //std::cout << "Progress: Done with " << i+1 << " of " << header.bands << std::endl;
   }
 
   hyperspectral_write_header( "test_out", header.bands, header.samples, header.lines, header.wlens );

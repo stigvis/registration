@@ -203,21 +203,16 @@ ResampleFilterType::Pointer resampleAffinePointer(
 }
 
 // Calculate diff between image before and after registration
-RescalerType::Pointer diffFilter(
+DifferenceFilterType::Pointer diffFilter(
                                       ImageType* const moving,
                                       ResampleFilterType::Pointer resample ){
 
   DifferenceFilterType::Pointer difference  =  DifferenceFilterType::New();
-  RescalerType::Pointer intensityRescaler   =  RescalerType::New();
-
-  intensityRescaler->SetOutputMinimum( 0 );
-  intensityRescaler->SetOutputMaximum( 1 );
 
   difference->SetInput1(        moving         );
   difference->SetInput2( resample->GetOutput() );
 
-  intensityRescaler->SetInput( difference->GetOutput()  );
-  return intensityRescaler;
+  return difference;
 }
 
 // Print results from rigid transform

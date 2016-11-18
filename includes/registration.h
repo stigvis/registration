@@ -28,11 +28,13 @@
 #include "itkResampleImageFilter.h"
 #include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkSubtractImageFilter.h"
 #include "itkIdentityTransform.h"
-#include "itkSquaredDifferenceImageFilter.h"
 #include "itkImageMaskSpatialObject.h"
+
+// Image operations
+#include "itkSubtractImageFilter.h"
+#include "itkSquaredDifferenceImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
@@ -172,7 +174,7 @@ ResampleFilterType::Pointer resampleAffinePointer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             TransformAffineType::Pointer transform );
-RescalerType::Pointer diffFilter(
+DifferenceFilterType::Pointer diffFilter(
                             ImageType* const moving,
                             ResampleFilterType::Pointer resample );
 
