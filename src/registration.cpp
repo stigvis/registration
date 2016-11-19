@@ -22,6 +22,45 @@ void CommandIterationUpdate::Execute(const itk::Object * object, const itk::Even
   std::cout << optimizer->GetCurrentPosition() << std::endl;
 }
 
+
+// Median filter
+ImageType::Pointer medianFilter( ImageType* const fixed, int radius ){
+	MedianFilterType::Pointer median = MedianFilterType::New();
+  ImageType::SizeType rad;
+
+  rad[0] = radius;
+  rad[1] = radius;
+
+	median->SetRadius( 	rad );
+	median->SetInput( fixed );
+
+  ImageType::Pointer output = median->GetOutput();
+  output->Update();
+
+	return output;
+}
+
+// Gradient filter
+GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
+  GradientFilterType::Pointer gradient = GradientFilterType::New();
+
+  gradient->SetSigma( sigma );
+  gradient->SetInput( fixed );
+  gradient->Update();
+
+  return gradient;
+}
+
+// Cast float to unsigned char
+CastFilterType::Pointer castImage( ImageType* const img ){
+
+  CastFilterType::Pointer castFilter = CastFilterType::New();
+  castFilter->SetInput( img );
+
+  return castFilter;
+}
+
+
 // Initialize registration container
 RegistrationType::Pointer registrationContainer(
                                       ImageType* const fixed,

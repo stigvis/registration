@@ -8,10 +8,11 @@
 #include <iostream>
 #include "string.h"
 #include "hyperspec_read.h"
+#include "multispec_read.h"
 #include "readimage.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
+
 	if (argc < 2) {
 		std::cerr << "Usage: " << argv[0] << " hyperspectral_image_path" << std::endl;
 		exit(1);
@@ -22,8 +23,7 @@ int main(int argc, char *argv[])
   // File format recognition and run correct function
   if (strstr(filename, "raw") ){
     // File is .raw
-    std::cout << "Raw sucks" << std::endl;
-    exit(1);
+    multispec_read_raw( argc, argv ); 
   } else if (strstr(filename, "img") ){
     // File is .img
     hyperspec_read_img(filename);

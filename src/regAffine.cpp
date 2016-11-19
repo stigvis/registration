@@ -6,6 +6,7 @@
 // =========================================================================
 
 #include "registration.h"
+using namespace std;
 
 // ===================================
 // Image registration method 3
@@ -17,9 +18,9 @@ ResampleFilterType::Pointer registration3(
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 0.1;
-  float slength   = 0.0001;
-  int   niter     = 300;
+  float lrate     = 0.5;
+  float slength   = 0.00005;
+  int   niter     = 400;
 
   const unsigned int numberOfLevels = 1;
   const double translationScale = 1.0 / 1000.0;
@@ -76,13 +77,13 @@ ResampleFilterType::Pointer registration3(
   // Start registration process
   try {
     registration->Update();
-    std::cout << "Optimizer stop condition: "
+    cout << "Optimizer stop condition: "
               << registration->GetOptimizer()->GetStopConditionDescription()
-              << std::endl;
+              << endl;
   }
   catch( itk::ExceptionObject & err ){
-    std::cerr << "ExceptionObject caught !" << std::endl;
-    std::cerr << err << std::endl;
+    cerr << "ExceptionObject caught !" << endl;
+    cerr << err << endl;
     exit(1);
   }
 

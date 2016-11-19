@@ -32,6 +32,7 @@
 #include "itkImageMaskSpatialObject.h"
 
 // Image operations
+#include "itkMedianImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkSquaredDifferenceImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
@@ -66,6 +67,9 @@ typedef itk::Image< CharPixelType, Dimension >              CharImageType;
 typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
                             ImageType,
                             ImageType >                     GradientFilterType;
+typedef itk::MedianImageFilter<
+														ImageType,
+														ImageType >											MedianFilterType;
 
 
 // Instantiation of transform types
@@ -106,7 +110,6 @@ typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
                             TransformAffineType >           RegistrationAffineType;
-typedef OptimizerType::ScalesType                           OptimizerScalesType;
 typedef itk::SubtractImageFilter<
                             ImageType,
                             ImageType,
@@ -130,7 +133,11 @@ typedef itk::CastImageFilter<
 
 
 // Set up writer
-typedef itk::ImageFileWriter< ImageType >                   WriterType;
+typedef itk::ImageFileWriter< 
+                            ImageType >                     WriterType;
+
+// Set up optimizer
+typedef OptimizerType::ScalesType                           OptimizerScalesType;
 
 // Generic handlers
 RegistrationType::Pointer registrationContainer(
@@ -178,6 +185,16 @@ DifferenceFilterType::Pointer diffFilter(
                             ImageType* const moving,
                             ResampleFilterType::Pointer resample );
 
+// Image I/O
+GradientFilterType::Pointer gradientFilter(
+                            ImageType* const fixed,
+                            int sigma );
+CastFilterType::Pointer castImage(
+                            ImageType* const img );
+ImageType::Pointer medianFilter(
+														ImageType* const fixed,
+														int radius );
+
 // Printing parameters
 void finalParameters( TransformType::Pointer transform,
                       OptimizerType::Pointer optimizer);
@@ -190,11 +207,18 @@ void finalMaskParameters( TransformType::Pointer transform,
 													OptimizerType::Pointer optimizer );
 
 // Image registrations
-ResampleFilterType::Pointer registration1( ImageType* const fixed, ImageType* const moving );
-ResampleFilterType::Pointer registration2( ImageType* const fixed, ImageType* const moving );
-ResampleFilterType::Pointer registration3( ImageType* const fixed, ImageType* const moving );
-ResampleFilterType::Pointer registration4(  ImageType* const fixed, 
-                                            ImageType* const moving, 
-                                            CharImageType* const gradient );
+ResampleFilterType::Pointer registration1( 
+                            ImageType* const fixed, 
+                            ImageType* const moving );
+ResampleFilterType::Pointer registration2( 
+                            ImageType* const fixed, 
+                            ImageType* const moving );
+ResampleFilterType::Pointer registration3( 
+                            ImageType* const fixed,
+                            ImageType* const moving );
+ResampleFilterType::Pointer registration4(
+                            ImageType* const fixed, 
+                            ImageType* const moving, 
+                            CharImageType* const gradient );
 
 #endif // REGISTRATION_H_DEFINED

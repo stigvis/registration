@@ -32,49 +32,6 @@ Apply registration
 
 */
 
-
-// Initiate image container
-ImageType::Pointer imageContainer( struct hyspex_header header ){
-  ImageType::RegionType region;
-  ImageType::IndexType start;
-
-  start[0] = 0;
-  start[1] = 0;
-
-  ImageType::SizeType size;
-  size[0] = header.samples;
-  size[1] = header.lines;
-
-  region.SetSize(size);
-  region.SetIndex(start);
-
-  ImageType::Pointer container = ImageType::New();
-  container->SetRegions(region);
-  container->Allocate();
-  return container;
-}
-
-// Gradient filter
-GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
-  GradientFilterType::Pointer gradient = GradientFilterType::New();
-
-  gradient->SetSigma( sigma );
-  gradient->SetInput( fixed );
-  //gradient->Update();
-
-  return gradient;
-}
-
-// Cast float to unsigned char
-CastFilterType::Pointer castImage( ImageType* const img ){
-
-  CastFilterType::Pointer castFilter = CastFilterType::New();
-  castFilter->SetInput( img );
-
-  return castFilter;
-}
-
-
 void hyperspec_read_img(const char *filename){
   // Function for handling .img
   // Read hyperspectral header file
@@ -92,28 +49,17 @@ void hyperspec_read_img(const char *filename){
   float *diff = new float[header.samples*header.lines*header.bands]();
 
   // Choose registration method
-  int regmethod = 1; // TODO: Take from config
+  int regmethod = 3; // TODO: Take from config
+
+  // Create and choose diffoutput
+  int diff_conf = 1; // TODO: Take as input
 
   // Create image containers
-  ImageType::Pointer fixed    = imageContainer(header);
-  ImageType::Pointer moving   = imageContainer(header);
-  ImageType::Pointer output   = imageContainer(header);
-  ImageType::Pointer outdiff  = imageContainer(header);
-  //ImageType::Pointer temp     = imageContainer(header);
-/*
-  // Read center image into fixed for registration
-  int centerband = header.bands/2;
-  for (int i=0; i < header.lines; i++){
-    for (int j=0; j < header.samples; j++){
-      ImageType::IndexType pixelIndex;
-      pixelIndex[0] = j;
-      pixelIndex[1] = i;
-      fixed->SetPixel(pixelIndex, img[i*header.samples*header.bands + centerband*header.samples + j]);
-      out[j*header.samples*header.bands + centerband*header.samples + j] =
-                                  img[i*header.samples*header.bands + centerband*header.samples + j];
-		}
-	}
-*/
+  ImageType::Pointer fixed     = imageContainer(header);
+  ImageType::Pointer moving    = imageContainer(header);
+  ImageType::Pointer output    = imageContainer(header);
+  ImageType::Pointer outdiff   = imageContainer(header);
+
 	// Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
 
@@ -123,8 +69,6 @@ void hyperspec_read_img(const char *filename){
 
   ResampleFilterType::Pointer registration;
 
-  // Create and choose diffoutput
-  int diff_conf = 1; // TODO: Take as input
 
   // Read images for processing
   // Image i=0 is fixed
@@ -143,9 +87,12 @@ void hyperspec_read_img(const char *filename){
       }
     }
 
-    if (i != 1){
-      fixed = output;
+    if ( i > 1 ){
+      fixed = registration->GetOutput();
+      fixed->Update();
     }
+		fixed = medianFilter( fixed, 1 );
+    //fixed->Update();
 
    // Throw to registration handler
     if (regmethod == 1){
@@ -284,4 +231,25 @@ void hyperspec_read_mat(const char *filename){
   Mat_VarFree(HSIi);
 	Mat_VarFree(HSId);
   Mat_Close(matfp);
+}
+
+// Initiate image container
+ImageType::Pointer imageContainer( struct hyspex_header header ){
+  ImageType::RegionType region;
+  ImageType::IndexType start;
+
+  start[0] = 0;
+  start[1] = 0;
+
+  ImageType::SizeType size;
+  size[0] = header.samples;
+  size[1] = header.lines;
+
+  region.SetSize(size);
+  region.SetIndex(start);
+
+  ImageType::Pointer container = ImageType::New();
+  container->SetRegions(region);
+  container->Allocate();
+  return container;
 }

@@ -7,16 +7,10 @@
 
 #include "registration.h"
 
-#ifndef HYPERSPEC_READ_H_DEFINED
-#define HYPERSPEC_READ_H_DEFINED
+#ifndef MULTISPEC_READ_H_DEFINED
+#define MULTISPEC_READ_H_DEFINED
 
-
-
-// Function that reads an .img file and splits into .tif files
-void hyperspec_read_img( const char *filename );
 // Function that reads a .mat file and splits into .tif files
-void hyperspec_read_mat( const char *filename );
+void multispec_read_raw( int argc, char *argv[] );
 
-ImageType::Pointer imageContainer( struct hyspex_header header );
-
-#endif // HYPERSPEC_READ_H_DEFINED
+#endif // MULTISPEC_READ_H_DEFINED
