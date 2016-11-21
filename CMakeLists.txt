@@ -8,12 +8,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/includes)
 
 add_executable(hyperspec_registration
                 main.cpp
-                src/hyperspec_read.cpp
-                src/multispec_read.cpp
+                src/hyperspec.cpp
+                src/multispec.cpp
                 src/readimage.cpp
                 src/registration.cpp
-                src/reg1.cpp
-                src/reg2.cpp
-                src/regAffine.cpp
-                src/regMask.cpp )
-target_link_libraries(hyperspec_registration boost_regex matio tiff raw ${ITK_LIBRARIES})
+                src/rigid.cpp
+                src/similarity.cpp
+                src/affine.cpp
+                src/mask.cpp )
+target_link_libraries(hyperspec_registration boost_regex matio tiff ${ITK_LIBRARIES})

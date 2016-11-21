@@ -13,7 +13,8 @@
 #include <sstream>
 #include <string>
 #include "string.h"
-#include "hyperspec_read.h"
+#include "hyperspec.h"
+using namespace std;
 
 /* TODO:
 
@@ -21,27 +22,18 @@ Read from config file
 //> http://www.hyperrealm.com/libconfig/
 //> https://en.wikipedia.org/wiki/Configuration_file
 
-Apply gradient of image (DONE)
-//> ITK/Examples/Filtering/GradientMagnitudeRecursiveGaussianImageFilter.cxx (With sigma=(1 2 3))
-
-Apply registration
-//> ITK/Examples/Registration/ImageRegistration6.cxx (DONE)
-//> ITK/Examples/Registration/ImageRegistration7.cxx (DONE)
-//> ITK/Examples/Registration/ImageRegistration9.cxx (DONE)
-//> ITK/Examples/Registration/ImageRegistration12.cxx (With gradient) (ERROR)
-
 */
 
-void hyperspec_read_img(const char *filename){
+void hyperspec_img(const char *filename){
   // Function for handling .img
   // Read hyperspectral header file
-	struct hyspex_header header;
-	hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
+  struct hyspex_header header;
+  hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
 
-	// Read hyperspectral image
-	float *img  = new float[header.samples*header.lines*header.bands]();
-	errcode = hyperspectral_read_image(filename, &header, img);
-	// Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
+  // Read hyperspectral image
+  float *img  = new float[header.samples*header.lines*header.bands]();
+  errcode = hyperspectral_read_image(filename, &header, img);
+  // Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
 
   // Float container for output images
   float *out  = new float[header.samples*header.lines*header.bands]();
@@ -57,10 +49,12 @@ void hyperspec_read_img(const char *filename){
   // Create image containers
   ImageType::Pointer fixed     = imageContainer(header);
   ImageType::Pointer moving    = imageContainer(header);
+  ImageType::Pointer ffixed    = imageContainer(header);
+  ImageType::Pointer fmoving   = imageContainer(header);
   ImageType::Pointer output    = imageContainer(header);
   ImageType::Pointer outdiff   = imageContainer(header);
 
-	// Create and setup a gradient filter
+  // Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
 
   GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
@@ -68,50 +62,71 @@ void hyperspec_read_img(const char *filename){
   CastFilterType::Pointer castGradient  = castImage( gradient->GetOutput() );
 
   ResampleFilterType::Pointer registration;
+  TransformRigidType::Pointer transform;
+
+  // Get fixed image
+  for (int j=0; j < header.lines; j++){
+    for (int k=0; k < header.samples; k++){
+      ImageType::IndexType pixelIndex;
+      pixelIndex[0] = k;
+      pixelIndex[1] = j;
+      fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + ( header.bands / 2 )*header.samples + k]);
+    }
+  }
+
+  ffixed = medianFilter( fixed, 1 );
+  ffixed->Update();
 
 
   // Read images for processing
   // Image i=0 is fixed
-  for (int i=1; i < header.bands; i++){
+  for (int i=0; i < header.bands; i++){
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        if (i == 1){
-          fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
-          out[j*header.samples*header.bands + (i-1)*header.samples + k] =
-                                      img[j*header.samples*header.bands + (i-1)*header.samples + k];
-        }
+        //if (i == 1){
+          //fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
+          //out[j*header.samples*header.bands + (i-1)*header.samples + k] =
+          //                            img[j*header.samples*header.bands + (i-1)*header.samples + k];
+        //}
         moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
       }
     }
 
-    if ( i > 1 ){
-      fixed = registration->GetOutput();
-      fixed->Update();
-    }
-		fixed = medianFilter( fixed, 1 );
+    fmoving = medianFilter( moving, 1 );
+    fmoving->Update();
+
+    //if ( i > 1 ){
+    //  fixed = registration->GetOutput();
+    //  fixed->Update();
+    //}
+    //fixed = medianFilter( fixed, 1 );
     //fixed->Update();
 
-   // Throw to registration handler
-    if (regmethod == 1){
-      registration = registration1( fixed, moving );
-    } else if (regmethod == 2){
+    // Throw to registration handler
+    if (regmethod == 1){                              // Rigid transform
+      transform = registration1( ffixed, fmoving );
+      registration = resampleRigidPointer(
+                                  fixed,
+                                  moving,
+                                  transform );
+    } else if (regmethod == 2){                       // Similarity transform
       registration = registration2( fixed, moving );
-    } else if (regmethod == 3){
+    } else if (regmethod == 3){                       // Affine transform
       registration = registration3( fixed, moving );
-    } else if (regmethod == 4){
+    } else if (regmethod == 4){                       // Rigid transform + mask
       CastFilterType::Pointer castMoving = castImage ( moving );
-      registration = registration4( fixed, //castFixed->GetOutput(),
-                                    moving, //castMoving->GetOutput(),
+      registration = registration4( fixed,
+                                    moving,
                                     castGradient->GetOutput() ); // See registration.cpp
     } else {
-      std::cout << "Specify a method from 1-4. Falling back to method 3, Affine" << std::endl;
+      cout << "Specify a method from 1-4. Falling back to method 3, Affine" << endl;
       registration = registration3( fixed, moving );
     }
 
-    std::cout << "Done with " << i << " of " << header.bands << std::endl;
+    cout << "Done with " << i + 1 << " of " << header.bands << endl;
     output = registration->GetOutput();
     output->Update();
 
@@ -133,7 +148,6 @@ void hyperspec_read_img(const char *filename){
         // (If we want a visible diff-image)
         if ( diff_conf == 1 ){ // TODO: Take from config
           diff[j*header.samples*header.bands + i*header.samples + k] = outdiff->GetPixel(pixelIndex);
-
         }
       }
     }
@@ -153,7 +167,7 @@ void hyperspec_read_img(const char *filename){
 
 }
 
-void hyperspec_read_mat(const char *filename){
+void hyperspec_mat(const char *filename){
   // Function for handling .mat
   // Read mat pointer
   mat_t *matfp;
@@ -166,8 +180,8 @@ void hyperspec_read_mat(const char *filename){
 
   // Read mat information
   matvar_t *HSIi = Mat_VarReadInfo(matfp, "HSI");
-	matvar_t *HSId = Mat_VarRead(matfp, "HSI");
-	matvar_t *wavelengthsi = Mat_VarReadInfo(matfp, "wavelengths");
+  matvar_t *HSId = Mat_VarRead(matfp, "HSI");
+  matvar_t *wavelengthsi = Mat_VarReadInfo(matfp, "wavelengths");
   matvar_t *wavelengthsd = Mat_VarRead(matfp, "wavelengths");
 
   // Get information from file
@@ -179,12 +193,12 @@ void hyperspec_read_mat(const char *filename){
   //Wavelengths
   unsigned nWave = wavelengthsd->dims[1];
   static double *wData = static_cast<double*>(wavelengthsd->data);
-	short unsigned *hData = static_cast<uint16_t*>(HSId->data);
-  std::cout << "Number of images: " << nSize << ", Image dimensions: " << xSize << "x" << ySize << ", Wavelengths: " ;
+  short unsigned *hData = static_cast<uint16_t*>(HSId->data);
+  cout << "Number of images: " << nSize << ", Image dimensions: " << xSize << "x" << ySize << ", Wavelengths: " ;
   for (int i=0; i<nWave-1; i++){
-    std::cout << wData[i] << ", ";
+    cout << wData[i] << ", ";
   }
-	std::cout << wData[nWave-1] << " Array size: " << HSId->nbytes/HSId->data_size << " Compression: " << HSId->compression << " Data type: " << HSId->data_type << std::endl;
+  cout << wData[nWave-1] << " Array size: " << HSId->nbytes/HSId->data_size << " Compression: " << HSId->compression << " Data type: " << HSId->data_type << endl;
 
   // Write to tiff
 
@@ -211,7 +225,7 @@ void hyperspec_read_mat(const char *filename){
     if (tmp != NULL) {
       linebuffer = tmp;
     } else {
-      std::cout << "Error allocating memory." << std::endl ;
+      cout << "Error allocating memory." << endl ;
     }
 
     linebuffer[0]=0;
@@ -226,10 +240,10 @@ void hyperspec_read_mat(const char *filename){
   }
 
   // Cleanup
-	Mat_VarFree(wavelengthsi);
+  Mat_VarFree(wavelengthsi);
   Mat_VarFree(wavelengthsd);
   Mat_VarFree(HSIi);
-	Mat_VarFree(HSId);
+  Mat_VarFree(HSId);
   Mat_Close(matfp);
 }
 

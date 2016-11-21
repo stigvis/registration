@@ -74,17 +74,17 @@ typedef itk::MedianImageFilter<
 
 // Instantiation of transform types
 typedef itk::CenteredRigid2DTransform< 
-                            double >                        TransformType;
+                            double >                        TransformRigidType;
 typedef itk::CenteredTransformInitializer<
-                            TransformType,
+                            TransformRigidType,
                             ImageType,
-                            ImageType >                     TransformInitializerType;
+                            ImageType >                     TransformRigidInitializerType;
 typedef itk::CenteredSimilarity2DTransform< 
-                            double >                        Transform2Type;
+                            double >                        TransformSimilarityType;
 typedef itk::CenteredTransformInitializer<
-                            Transform2Type,
+                            TransformSimilarityType,
                             ImageType,
-                            ImageType >                     Transform2InitializerType;
+                            ImageType >                     TransformSimilarityInitializerType;
 typedef itk::AffineTransform< 
                             double,
                             Dimension >                     TransformAffineType;
@@ -101,11 +101,11 @@ typedef itk::MeanSquaresImageToImageMetricv4<
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
-                            TransformType >                 RegistrationType;
+                            TransformRigidType >            RegistrationRigidType;
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
-                            Transform2Type >                Registration2Type;
+                            TransformSimilarityType >       RegistrationSimilarityType;
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
@@ -140,43 +140,43 @@ typedef itk::ImageFileWriter<
 typedef OptimizerType::ScalesType                           OptimizerScalesType;
 
 // Generic handlers
-RegistrationType::Pointer registrationContainer(
+RegistrationRigidType::Pointer registrationRigidContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             OptimizerType::Pointer optimizer );
-Registration2Type::Pointer registration2Container(
+RegistrationSimilarityType::Pointer registrationSimilarityContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
-                            OptimizerType::Pointer optimizer );
-RegistrationType::Pointer registrationMaskContainer(
-                            ImageType* const fixed,
-                            ImageType* const moving,
-                            MetricType::Pointer metric,
                             OptimizerType::Pointer optimizer );
 RegistrationAffineType::Pointer registrationAffineContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             OptimizerType::Pointer optimizer );
-TransformInitializerType::Pointer initializerContainer(
+RegistrationRigidType::Pointer registrationMaskContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
-                            TransformType::Pointer transform );
-Transform2InitializerType::Pointer initializer2Container(
+                            MetricType::Pointer metric,
+                            OptimizerType::Pointer optimizer );
+TransformRigidInitializerType::Pointer initializerRigidContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
-                            Transform2Type::Pointer transform );
+                            TransformRigidType::Pointer transform );
+TransformSimilarityInitializerType::Pointer initializerSimilarityContainer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            TransformSimilarityType::Pointer transform );
 TransformAffineInitializerType::Pointer initializerAffineContainer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             TransformAffineType::Pointer transform );
-ResampleFilterType::Pointer resamplePointer(
+ResampleFilterType::Pointer resampleRigidPointer(
                             ImageType* const fixed,
                             ImageType* const moving,
-                            TransformType::Pointer transform );
-ResampleFilterType::Pointer resample2Pointer(
+                            TransformRigidType::Pointer transform );
+ResampleFilterType::Pointer resampleSimilarityPointer(
                             ImageType* const fixed,
                             ImageType* const moving,
-                            Transform2Type::Pointer transform );
+                            TransformSimilarityType::Pointer transform );
 ResampleFilterType::Pointer resampleAffinePointer(
                             ImageType* const fixed,
                             ImageType* const moving,
@@ -189,25 +189,26 @@ DifferenceFilterType::Pointer diffFilter(
 GradientFilterType::Pointer gradientFilter(
                             ImageType* const fixed,
                             int sigma );
-CastFilterType::Pointer castImage(
+CastFilterType::Pointer     castImage(
                             ImageType* const img );
-ImageType::Pointer medianFilter(
+ImageType::Pointer          medianFilter(
 														ImageType* const fixed,
 														int radius );
 
 // Printing parameters
-void finalParameters( TransformType::Pointer transform,
+void finalRigidParameters( TransformRigidType::Pointer transform,
                       OptimizerType::Pointer optimizer);
-void final2Parameters( Transform2Type::Pointer transform,
+void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
                       OptimizerType::Pointer optimizer);
 void finalAffineParameters( TransformAffineType::Pointer transform,
                       OptimizerType::Pointer optimizer);
-void finalMaskParameters( TransformType::Pointer transform,
-													RegistrationType::Pointer registration,
+void finalMaskParameters( TransformRigidType::Pointer transform,
+													RegistrationRigidType::Pointer registration,
 													OptimizerType::Pointer optimizer );
 
 // Image registrations
-ResampleFilterType::Pointer registration1( 
+TransformRigidType::Pointer registration1(
+//ResampleFilterType::Pointer registration1( 
                             ImageType* const fixed, 
                             ImageType* const moving );
 ResampleFilterType::Pointer registration2( 

@@ -62,13 +62,13 @@ CastFilterType::Pointer castImage( ImageType* const img ){
 
 
 // Initialize registration container
-RegistrationType::Pointer registrationContainer(
+RegistrationRigidType::Pointer registrationRigidContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
                                       OptimizerType::Pointer optimizer  ){
 
-  MetricType::Pointer         metric        = MetricType::New();
-  RegistrationType::Pointer   registration  = RegistrationType::New();
+  MetricType::Pointer               metric        = MetricType::New();
+  RegistrationRigidType::Pointer    registration  = RegistrationRigidType::New();
 
   registration->SetMetric(      metric    );
   registration->SetOptimizer(   optimizer );
@@ -78,13 +78,15 @@ RegistrationType::Pointer registrationContainer(
 }
 
 // Initialize registration container with Transform2Type
-Registration2Type::Pointer registration2Container(
+RegistrationSimilarityType::Pointer registrationSimilarityContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
                                       OptimizerType::Pointer optimizer  ){
 
-  MetricType::Pointer         metric        = MetricType::New();
-  Registration2Type::Pointer  registration  = Registration2Type::New();
+  MetricType::Pointer                   metric        = 
+                                      MetricType::New();
+  RegistrationSimilarityType::Pointer   registration  = 
+                                      RegistrationSimilarityType::New();
 
   registration->SetMetric(      metric    );
   registration->SetOptimizer(   optimizer );
@@ -94,13 +96,14 @@ Registration2Type::Pointer registration2Container(
 }
 
 // Initialize registration container with mask
-RegistrationType::Pointer registrationMaskContainer(
+RegistrationRigidType::Pointer registrationMaskContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
                                       MetricType::Pointer metric,
                                       OptimizerType::Pointer optimizer  ){
 	
-  RegistrationType::Pointer  	    registration  = RegistrationType::New();
+  RegistrationRigidType::Pointer  	    registration  = 
+                                      RegistrationRigidType::New();
 
   registration->SetMetric(      	metric    	);
   registration->SetOptimizer(   	optimizer 	);
@@ -126,13 +129,13 @@ RegistrationAffineType::Pointer registrationAffineContainer(
 }
 
 // Initialize initializer container with rigid transform
-TransformInitializerType::Pointer initializerContainer(
+TransformRigidInitializerType::Pointer initializerRigidContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
-                                      TransformType::Pointer transform ){
+                                      TransformRigidType::Pointer transform ){
 
-  TransformInitializerType::Pointer initializer =
-                                      TransformInitializerType::New();
+  TransformRigidInitializerType::Pointer initializer =
+                                      TransformRigidInitializerType::New();
 
   // Initializer is now connected to the transform and to the fixed and moving images
   initializer->SetTransform(   transform  );
@@ -148,13 +151,13 @@ TransformInitializerType::Pointer initializerContainer(
 }
 
 // Initialize initializer container with similarity transform
-Transform2InitializerType::Pointer initializer2Container(
+TransformSimilarityInitializerType::Pointer initializerSimilarityContainer(
                                       ImageType* const fixed,
                                       ImageType* const moving,
-                                      Transform2Type::Pointer transform ){
+                                      TransformSimilarityType::Pointer transform ){
 
-  Transform2InitializerType::Pointer initializer =
-                                      Transform2InitializerType::New();
+  TransformSimilarityInitializerType::Pointer initializer =
+                                      TransformSimilarityInitializerType::New();
 
   // Initializer is now connected to the transform and to the fixed and moving images
   initializer->SetTransform(   transform  );
@@ -192,26 +195,27 @@ TransformAffineInitializerType::Pointer initializerAffineContainer(
 }
 
 // Resample moving image with rigid transform
-ResampleFilterType::Pointer resamplePointer(
+ResampleFilterType::Pointer resampleRigidPointer(
                                       ImageType* const moving,
                                       ImageType* const fixed,
-                                      TransformType::Pointer transform ){
+                                      TransformRigidType::Pointer transform ){
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
   resample->SetTransform(               transform                 );
   resample->SetInput(                     moving                  );
-  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
-  resample->SetOutputOrigin(        fixed->GetOrigin()            );
-  resample->SetOutputSpacing(       fixed->GetSpacing()           );
-  resample->SetDefaultPixelValue(               0.0               ); // ?
+  resample->SetSize( moving->GetLargestPossibleRegion().GetSize() );
+  resample->SetOutputOrigin(        moving->GetOrigin()           );
+  resample->SetOutputSpacing(       moving->GetSpacing()          );
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
   return resample;
 }
 
 // Resample moving image with similarity transform
-ResampleFilterType::Pointer resample2Pointer(
+ResampleFilterType::Pointer resampleSimilarityPointer(
                                       ImageType* const moving,
                                       ImageType* const fixed,
-                                      Transform2Type::Pointer transform ){
+                                      TransformSimilarityType::Pointer transform ){
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
   resample->SetTransform(               transform                 );
@@ -220,7 +224,8 @@ ResampleFilterType::Pointer resample2Pointer(
   resample->SetOutputOrigin(        fixed->GetOrigin()            );
   resample->SetOutputSpacing(       fixed->GetSpacing()           );
   resample->SetOutputDirection(     fixed->GetDirection()         );
-  resample->SetDefaultPixelValue(               0.0               ); // ?
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
   return resample;
 }
 
@@ -237,7 +242,8 @@ ResampleFilterType::Pointer resampleAffinePointer(
   resample->SetOutputOrigin(        fixed->GetOrigin()            );
   resample->SetOutputSpacing(       fixed->GetSpacing()           );
   resample->SetOutputDirection(     fixed->GetDirection()         );
-  resample->SetDefaultPixelValue(               0.0               ); // ?
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
   return resample;
 }
 
@@ -255,9 +261,10 @@ DifferenceFilterType::Pointer diffFilter(
 }
 
 // Print results from rigid transform
-void finalParameters( TransformType::Pointer transform,
-                      OptimizerType::Pointer optimizer ){
-  TransformType::ParametersType finalParameters = transform->GetParameters();
+void finalRigidParameters( 
+                                      TransformRigidType::Pointer transform,
+                                      OptimizerType::Pointer optimizer ){
+  TransformRigidType::ParametersType finalParameters = transform->GetParameters();
 
   const double finalAngle           = finalParameters[0];
   const double finalRotationCenterX = finalParameters[1];
@@ -284,9 +291,9 @@ void finalParameters( TransformType::Pointer transform,
 }
 
 // Print results from similarity transform
-void final2Parameters( Transform2Type::Pointer transform,
+void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
                       OptimizerType::Pointer optimizer ){
-  Transform2Type::ParametersType finalParameters = transform->GetParameters();
+  TransformSimilarityType::ParametersType finalParameters = transform->GetParameters();
 
   const double finalAngle           = finalParameters[0];
   const double finalRotationCenterX = finalParameters[1];
@@ -356,8 +363,8 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
 }
 
 // Print results from mask transform
-void finalMaskParameters( TransformType::Pointer transform,
-													RegistrationType::Pointer registration,
+void finalMaskParameters( TransformRigidType::Pointer transform,
+													RegistrationRigidType::Pointer registration,
 													OptimizerType::Pointer optimizer ){
 	OptimizerType::ParametersType finalParameters =
                     transform->GetParameters();

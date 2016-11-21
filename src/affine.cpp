@@ -6,55 +6,53 @@
 // =========================================================================
 
 #include "registration.h"
+using namespace std;
 
 // ===================================
-// Image registration method 4
+// Image registration method 3
 // ===================================
-ResampleFilterType::Pointer registration4(
+ResampleFilterType::Pointer registration3(
                                         ImageType* const fixed,
-                                        ImageType* const moving,
-                                        CharImageType* const gradient ){
+                                        ImageType* const moving ){
   // Initialize parameters (see reg1.cpp for description)
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 1.0;
-  float slength   = 0.001;
-  int   niter     = 200;
+  float lrate     = 0.5;
+  float slength   = 0.00005;
+  int   niter     = 400;
 
   const unsigned int numberOfLevels = 1;
   const double translationScale = 1.0 / 1000.0;
 
   // Optimizer and Registration containers
-  MetricType::Pointer         metric        = MetricType::New();
-  OptimizerType::Pointer      optimizer     = OptimizerType::New();
-  RegistrationType::Pointer 	registration  = registrationMaskContainer(
+  OptimizerType::Pointer          optimizer     = OptimizerType::New();
+  RegistrationAffineType::Pointer registration  = registrationAffineContainer(
                                         fixed,
                                         moving,
-                                        metric,
                                         optimizer );
 
   // Construction of the transform object
-  TransformType::Pointer    transform     = TransformType::New();
-  TransformInitializerType::Pointer initializer = initializerContainer(
+  TransformAffineType::Pointer    transform     = TransformAffineType::New();
+  TransformAffineInitializerType::Pointer initializer = initializerAffineContainer(
                                         fixed,
                                         moving,
                                         transform );
 
-
   // Set parameters
-  transform->SetAngle( angle );
+  //transform->SetAngle( angle );
 
-  registration->SetInitialTransform(  	transform  			);
+  registration->SetInitialTransform( transform );
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
   optimizerScales[0] =  1.0;
-  optimizerScales[1] =  translationScale;
-  optimizerScales[2] =  translationScale;
-  optimizerScales[3] =  translationScale;
+  optimizerScales[1] =  1.0;
+  optimizerScales[2] =  1.0;
+  optimizerScales[3] =  1.0;
   optimizerScales[4] =  translationScale;
+  optimizerScales[5] =  translationScale;
 
   optimizer->SetScales(   optimizerScales   );
   optimizer->SetLearningRate(     lrate     );
@@ -64,17 +62,11 @@ ResampleFilterType::Pointer registration4(
   CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
   optimizer->AddObserver( itk::IterationEvent(), observer );
 
-  // Apply mask
-  MaskType::Pointer    spatialObjectMask  = MaskType::New();
-
-  spatialObjectMask->SetImage( gradient );
-  metric->SetFixedImageMask( spatialObjectMask );
-
-  RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+  RegistrationAffineType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
   shrinkFactorsPerLevel.SetSize( 1 );
   shrinkFactorsPerLevel[0] = 1;
 
-  RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+  RegistrationAffineType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
   smoothingSigmasPerLevel.SetSize( 1 );
   smoothingSigmasPerLevel[0] = 0;
 
@@ -85,24 +77,24 @@ ResampleFilterType::Pointer registration4(
   // Start registration process
   try {
     registration->Update();
-    std::cout << "Optimizer stop condition: "
+    cout << "Optimizer stop condition: "
               << registration->GetOptimizer()->GetStopConditionDescription()
-              << std::endl;
+              << endl;
   }
   catch( itk::ExceptionObject & err ){
-    std::cerr << "ExceptionObject caught !" << std::endl;
-    std::cerr << err << std::endl;
+    cerr << "ExceptionObject caught !" << endl;
+    cerr << err << endl;
     exit(1);
   }
 
   // Resample new image
-  ResampleFilterType::Pointer resample = resamplePointer(
+  ResampleFilterType::Pointer resample = resampleAffinePointer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Print results
-  finalMaskParameters(transform, registration, optimizer );
+  finalAffineParameters(transform, optimizer );
 
   return resample;
 

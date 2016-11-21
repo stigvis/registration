@@ -7,14 +7,17 @@
 
 #include <iostream>
 #include "string.h"
-#include "hyperspec_read.h"
-#include "multispec_read.h"
+#include "hyperspec.h"
+#include "multispec.h"
 #include "readimage.h"
+using namespace std;
+
+// TODO: try/catch blocks for ->Update()
 
 int main(int argc, char *argv[]){
 
 	if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " hyperspectral_image_path" << std::endl;
+		cerr << "Usage: " << argv[0] << " hyperspectral_image_path" << endl;
 		exit(1);
 	}
 
@@ -23,16 +26,16 @@ int main(int argc, char *argv[]){
   // File format recognition and run correct function
   if (strstr(filename, "raw") ){
     // File is .raw
-    multispec_read_raw( argc, argv ); 
+    multispec_raw( argc, argv ); 
   } else if (strstr(filename, "img") ){
     // File is .img
-    hyperspec_read_img(filename);
+    hyperspec_img(filename);
   } else if (strstr(filename, "mat") ){
     // File is .mat
-    hyperspec_read_mat(filename);
+    hyperspec_mat(filename);
   } else {
     // Unknown format
-    std::cerr << "Currently supported file formats: img, mat, raw" << std::endl;
+    cerr << "Currently supported file formats: img, mat, raw" << endl;
     exit(1);
   }
 }

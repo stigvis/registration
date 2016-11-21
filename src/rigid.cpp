@@ -6,40 +6,40 @@
 // =========================================================================
 
 #include "registration.h"
+using namespace std;
 
 // ===================================
-// Image registration method 2
+// Image registration method 1 
 // ===================================
-ResampleFilterType::Pointer registration2(
-                                        ImageType* const fixed,
+TransformRigidType::Pointer registration1( 
+                                        ImageType* const fixed, 
                                         ImageType* const moving ){
-  // Initialize parameters (see reg1.cpp for description)
-  // TODO: Read from config
-  float angle     = 0.0;
-  float scale     = 1.0;
-  float lrate     = 1;
-  float slength   = 0.0001;
-  int   niter     = 500;
 
-  const unsigned int numberOfLevels = 1;
-  const double translationScale = 1.0 / 100.0;
+  // Initialize parameters
+  // TODO: Read parameters from config
+  float angle   = 0.0;                          // Transform angle
+  float lrate   = 0.1;                          // Learning rate
+  float slength = 0.0001;                       // Minimum step length
+  int   niter   = 400;                          // Number of iterations
+
+  const unsigned int numberOfLevels = 1;        // 1:1 transform
+  const double translationScale = 1.0 / 1000.0;
 
   // Optimizer and Registration containers
-  OptimizerType::Pointer    optimizer     = OptimizerType::New();
-  Registration2Type::Pointer registration  = registration2Container(
+  OptimizerType::Pointer          optimizer     = OptimizerType::New();
+  RegistrationRigidType::Pointer  registration  = registrationRigidContainer(
                                         fixed,
                                         moving,
                                         optimizer );
 
   // Construction of the transform object
-  Transform2Type::Pointer    transform     = Transform2Type::New();
-  Transform2InitializerType::Pointer initializer = initializer2Container(
+  TransformRigidType::Pointer     transform     = TransformRigidType::New();
+  TransformRigidInitializerType::Pointer initializer = initializerRigidContainer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Set parameters
-  transform->SetScale( scale );
   transform->SetAngle( angle );
 
   registration->SetInitialTransform( transform );
@@ -47,27 +47,28 @@ ResampleFilterType::Pointer registration2(
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
-  optimizerScales[0] = 10.0;
-  optimizerScales[1] =  1.0;
-  optimizerScales[2] =  translationScale;
-  optimizerScales[3] =  translationScale;
-  optimizerScales[4] =  translationScale;
-  optimizerScales[5] =  translationScale;
+  optimizerScales[0] = 1.0;
+  optimizerScales[1] = translationScale;
+  optimizerScales[2] = translationScale;
+  optimizerScales[3] = translationScale;
+  optimizerScales[4] = translationScale;
 
-  optimizer->SetScales(   optimizerScales   );
-  optimizer->SetLearningRate(     lrate     );
-  optimizer->SetMinimumStepLength( slength  );
-  optimizer->SetNumberOfIterations( niter   );
+  optimizer->SetScales(   optimizerScales  );
+  optimizer->SetLearningRate(     lrate    );
+  optimizer->SetMinimumStepLength( slength );
+  optimizer->SetNumberOfIterations( niter  );
 
+  // Create the command observer and register it with the optimizer
   CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
   optimizer->AddObserver( itk::IterationEvent(), observer );
 
-  RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+  // Optional: Shrinking and/or smoothing, set to 0
+  RegistrationRigidType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
   shrinkFactorsPerLevel.SetSize( 1 );
   shrinkFactorsPerLevel[0] = 1;
 
-  RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize( 1 );
+  RegistrationRigidType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+  smoothingSigmasPerLevel.SetSize ( 1 );
   smoothingSigmasPerLevel[0] = 0;
 
   registration->SetNumberOfLevels(          numberOfLevels          );
@@ -77,25 +78,24 @@ ResampleFilterType::Pointer registration2(
   // Start registration process
   try {
     registration->Update();
-    std::cout << "Optimizer stop condition: "
+    cout << "Optimizer stop condition: "
               << registration->GetOptimizer()->GetStopConditionDescription()
-              << std::endl;
+              << endl;
   }
   catch( itk::ExceptionObject & err ){
-    std::cerr << "ExceptionObject caught !" << std::endl;
-    std::cerr << err << std::endl;
+    cerr << "ExceptionObject caught !" << endl;
+    cerr << err << endl;
     exit(1);
   }
 
   // Resample new image
-  ResampleFilterType::Pointer resample = resample2Pointer(
+  ResampleFilterType::Pointer resample = resampleRigidPointer(
                                         fixed,
                                         moving,
                                         transform );
 
   // Print results
-  final2Parameters(transform, optimizer );
-
-  return resample;
-
-}
+  finalRigidParameters( transform, optimizer );
+  return transform;
+  //return resample;
+};

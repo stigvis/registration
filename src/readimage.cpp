@@ -46,7 +46,6 @@ hyperspectral_err_t hyperspectral_read_header(const char* filename, struct hyspe
 	while (sizeRead){
 		sizeRead = fread(hdrText + offset, sizeof(char), MAX_CHAR, fp);
 		offset += sizeRead/sizeof(char);
-
 	}
 	fclose(fp);
 
@@ -58,14 +57,14 @@ hyperspectral_err_t hyperspectral_read_header(const char* filename, struct hyspe
 	string hdrOffset = getValue(hdrText, "header offset");
 	string interleave = getValue(hdrText, "interleave");
 	string datatype = getValue(hdrText, "data type");
-  /*
-  cerr << samples.empty() << endl;
-  cerr << bands.empty() << endl;
-	cerr << lines.empty() << endl;
-	cerr << hdrOffset.empty() << endl;
-	cerr << interleave.empty() << endl;
-	cerr << datatype.empty() << endl;
-  */
+  //
+  //cerr << samples.empty() << endl;
+  //cerr << bands.empty() << endl;
+	//cerr << lines.empty() << endl;
+	//cerr << hdrOffset.empty() << endl;
+	//cerr << interleave.empty() << endl;
+	//cerr << datatype.empty() << endl;
+  //
 	if ((samples.empty()) || (bands.empty()) || (lines.empty()) || (hdrOffset.empty()) || (interleave.empty()) || (datatype.empty())){
 		return HYPERSPECTRAL_HDR_PROPERTY_NOT_FOUND;
 	}

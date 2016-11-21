@@ -20,6 +20,9 @@ Hyperspektrale bilder lagret som .mat:
 
 Biblioteker:
 
+itk
+libraw(?)
+
 libmatio
 -> dep: zlib
 -> optional dep: HDF5
@@ -27,11 +30,3 @@ libmatio
 mat_t matfp = Mat_Open(filename,MAT_ACC_RDONLY); henter en peker til filen .mat. Henter deretter ut data med matvar_t *HSId = Mat_VarRead(matfp,"HSI"), som er nok en peker, hvor til slutt data lagres i et array med short unsigned *hData = static_cast<uint16_t*>(HSId->data).
 
 Gammel dokumentasjon finnes: http://libmatio.sourcearchive.com/documentation/1.3.4-3/main.html
-
-Lagring som .tif:
-
-Biblioteker:
-
-libtiffio
-
-Lagrer bildene ut fra spesifikasjonene satt av "TIFFSetField"
