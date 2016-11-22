@@ -121,24 +121,24 @@ hyperspectral_err_t hyperspectral_read_image(const char *filename, struct hyspex
 		return HYPERSPECTRAL_DATATYPE_UNSUPPORTED;
 	}
 
-	FILE *fp = fopen(filename, "rb");
-	if (fp == NULL){
-		return HYPERSPECTRAL_FILE_NOT_FOUND;
-	}
+  FILE *fp = fopen(filename, "rb");
+  if (fp == NULL){
+    return HYPERSPECTRAL_FILE_NOT_FOUND;
+  }
 
-	//skip header and lines we do not want
-	size_t skipBytes = subset.start_line*header->samples*header->bands*elementBytes + header->offset;
-	fprintf(stderr, "skipBytes: %d\n", skipBytes);
-	fseek(fp, skipBytes, SEEK_SET);
+  //skip header and lines we do not want
+  size_t skipBytes = subset.start_line*header->samples*header->bands*elementBytes + header->offset;
+  fprintf(stderr, "skipBytes: %d\n", skipBytes);
+  fseek(fp, skipBytes, SEEK_SET);
 
-	int numLinesToRead = subset.end_line - subset.start_line;
+  int numLinesToRead = subset.end_line - subset.start_line;
 
 
-	//read in line by line
-	for (int i=0; i < numLinesToRead; i++){
-		char *line = (char*)malloc(elementBytes*header->bands*header->samples);
-		int sizeRead = fread(line, elementBytes, header->bands*header->samples, fp);
-		if (sizeRead == 0){
+  //read in line by line
+  for (int i=0; i < numLinesToRead; i++){
+    char *line = (char*)malloc(elementBytes*header->bands*header->samples);
+    int sizeRead = fread(line, elementBytes, header->bands*header->samples, fp);
+    if (sizeRead == 0){
 			return HYPERSPECTRAL_FILE_READING_ERROR;
 		}
 

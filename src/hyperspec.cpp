@@ -22,6 +22,19 @@ Read from config file
 //> http://www.hyperrealm.com/libconfig/
 //> https://en.wikipedia.org/wiki/Configuration_file
 
+Testing:
+Lise_arm_before_occlusion_mnf_inversetransformed.img
+-> Reduced to 1601x1401x40 -> Fixed = 20
+-> 2: 100, -100
+-> 4: 200, -100
+-> 6: 200, -100
+-> 8: 200, -200
+-> 10: 20 deg
+-> 12: 40 deg
+-> 14: -20 deg
+-> 16: -40 deg
+
+
 */
 
 void hyperspec_img(const char *filename){
@@ -41,7 +54,7 @@ void hyperspec_img(const char *filename){
   float *diff = new float[header.samples*header.lines*header.bands]();
 
   // Choose registration method
-  int regmethod = 3; // TODO: Take from config
+  int regmethod = 1; // TODO: Take from config
 
   // Create and choose diffoutput
   int diff_conf = 1; // TODO: Take as input
@@ -53,6 +66,8 @@ void hyperspec_img(const char *filename){
   ImageType::Pointer fmoving   = imageContainer(header);
   ImageType::Pointer output    = imageContainer(header);
   ImageType::Pointer outdiff   = imageContainer(header);
+  DifferenceFilterType::Pointer difference = DifferenceFilterType::New();
+
 
   // Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
@@ -62,7 +77,8 @@ void hyperspec_img(const char *filename){
   CastFilterType::Pointer castGradient  = castImage( gradient->GetOutput() );
 
   ResampleFilterType::Pointer registration;
-  TransformRigidType::Pointer transform;
+  TransformRigidType::Pointer composite_transform;
+  TransformAffineType::Pointer affine_transform;
 
   // Get fixed image
   for (int j=0; j < header.lines; j++){
@@ -86,55 +102,72 @@ void hyperspec_img(const char *filename){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        //if (i == 1){
-          //fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
-          //out[j*header.samples*header.bands + (i-1)*header.samples + k] =
-          //                            img[j*header.samples*header.bands + (i-1)*header.samples + k];
-        //}
+        /*if (i == 1){
+          fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
+          out[j*header.samples*header.bands + (i-1)*header.samples + k] =
+                                      img[j*header.samples*header.bands + (i-1)*header.samples + k];
+        }*/
         moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
       }
     }
-
+/*
+    if ( i > 1 ){
+      fixed = registration->GetOutput();
+      fixed->Update();
+    }
+    ffixed = medianFilter( fixed, 1 );
+    ffixed->Update();*/
     fmoving = medianFilter( moving, 1 );
     fmoving->Update();
 
-    //if ( i > 1 ){
-    //  fixed = registration->GetOutput();
-    //  fixed->Update();
-    //}
-    //fixed = medianFilter( fixed, 1 );
-    //fixed->Update();
-
     // Throw to registration handler
     if (regmethod == 1){                              // Rigid transform
-      transform = registration1( ffixed, fmoving );
+      composite_transform = registration1( ffixed, fmoving );
       registration = resampleRigidPointer(
                                   fixed,
                                   moving,
-                                  transform );
+                                  composite_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
     } else if (regmethod == 2){                       // Similarity transform
       registration = registration2( fixed, moving );
     } else if (regmethod == 3){                       // Affine transform
-      registration = registration3( fixed, moving );
-    } else if (regmethod == 4){                       // Rigid transform + mask
+      affine_transform = registration3( ffixed, fmoving );
+      registration = resampleAffinePointer(
+                                  fixed,
+                                  moving,
+                                  affine_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+    /*} else if (regmethod == 4){                       // Rigid transform + mask
       CastFilterType::Pointer castMoving = castImage ( moving );
       registration = registration4( fixed,
                                     moving,
                                     castGradient->GetOutput() ); // See registration.cpp
+    */
     } else {
       cout << "Specify a method from 1-4. Falling back to method 3, Affine" << endl;
-      registration = registration3( fixed, moving );
+      affine_transform = registration3( ffixed, fmoving );
+      registration = resampleAffinePointer(
+                                  fixed,
+                                  moving,
+                                  affine_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
     }
 
     cout << "Done with " << i + 1 << " of " << header.bands << endl;
     output = registration->GetOutput();
     output->Update();
 
-    DifferenceFilterType::Pointer difference = diffFilter(
-                                           moving,
-                                           registration ); // See registration.cpp
-    //outdiff = difference->GetOutput();
-    //outdiff->Update();
+    //DifferenceFilterType::Pointer difference = diffFilter(
+    //                                       moving,
+    //                                       registration ); // See registration.cpp
+    outdiff = difference->GetOutput();
+    outdiff->Update();
 
     // Add to output
     for (int j=0; j < header.lines; j++){

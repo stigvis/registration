@@ -24,7 +24,7 @@
 #include "itkCenteredRigid2DTransform.h"
 #include "itkCenteredTransformInitializer.h"
 
-// Image I/O 
+// Image I/O
 #include "itkResampleImageFilter.h"
 #include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
@@ -61,37 +61,43 @@ public:
 const   unsigned int  Dimension = 2;
 typedef float         PixelType;
 typedef unsigned char CharPixelType;
+typedef uint16_t      UintPixelType;
 
 typedef itk::Image< PixelType, Dimension >                  ImageType;
 typedef itk::Image< CharPixelType, Dimension >              CharImageType;
+typedef itk::Image< UintPixelType, Dimension >              UintImageType;
 typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
                             ImageType,
                             ImageType >                     GradientFilterType;
 typedef itk::MedianImageFilter<
-														ImageType,
-														ImageType >											MedianFilterType;
+                            ImageType,
+                            ImageType >                     MedianFilterType;
 
 
 // Instantiation of transform types
-typedef itk::CenteredRigid2DTransform< 
+typedef itk::CenteredRigid2DTransform<
                             double >                        TransformRigidType;
 typedef itk::CenteredTransformInitializer<
                             TransformRigidType,
                             ImageType,
                             ImageType >                     TransformRigidInitializerType;
-typedef itk::CenteredSimilarity2DTransform< 
+typedef itk::CenteredSimilarity2DTransform<
                             double >                        TransformSimilarityType;
 typedef itk::CenteredTransformInitializer<
                             TransformSimilarityType,
                             ImageType,
                             ImageType >                     TransformSimilarityInitializerType;
-typedef itk::AffineTransform< 
+typedef itk::AffineTransform<
                             double,
                             Dimension >                     TransformAffineType;
 typedef itk::CenteredTransformInitializer<
                             TransformAffineType,
                             ImageType,
                             ImageType >                     TransformAffineInitializerType;
+typedef itk::CompositeTransform<
+                            double,
+                            Dimension >                     CompositeTransformType;
+
 typedef itk::RegularStepGradientDescentOptimizerv4<
                             double>                         OptimizerType;
 typedef itk::MeanSquaresImageToImageMetricv4<
@@ -133,8 +139,10 @@ typedef itk::CastImageFilter<
 
 
 // Set up writer
-typedef itk::ImageFileWriter< 
+typedef itk::ImageFileWriter<
                             ImageType >                     WriterType;
+typedef itk::ImageFileWriter<
+                            UintImageType >                 UintWriterType;
 
 // Set up optimizer
 typedef OptimizerType::ScalesType                           OptimizerScalesType;
@@ -192,8 +200,8 @@ GradientFilterType::Pointer gradientFilter(
 CastFilterType::Pointer     castImage(
                             ImageType* const img );
 ImageType::Pointer          medianFilter(
-														ImageType* const fixed,
-														int radius );
+                            ImageType* const fixed,
+                            int radius );
 
 // Printing parameters
 void finalRigidParameters( TransformRigidType::Pointer transform,
@@ -203,23 +211,22 @@ void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
 void finalAffineParameters( TransformAffineType::Pointer transform,
                       OptimizerType::Pointer optimizer);
 void finalMaskParameters( TransformRigidType::Pointer transform,
-													RegistrationRigidType::Pointer registration,
-													OptimizerType::Pointer optimizer );
+                          RegistrationRigidType::Pointer registration,
+                          OptimizerType::Pointer optimizer );
 
 // Image registrations
 TransformRigidType::Pointer registration1(
-//ResampleFilterType::Pointer registration1( 
-                            ImageType* const fixed, 
+                            ImageType* const fixed,
                             ImageType* const moving );
-ResampleFilterType::Pointer registration2( 
-                            ImageType* const fixed, 
+ResampleFilterType::Pointer registration2(
+                            ImageType* const fixed,
                             ImageType* const moving );
-ResampleFilterType::Pointer registration3( 
+TransformAffineType::Pointer registration3(
                             ImageType* const fixed,
                             ImageType* const moving );
 ResampleFilterType::Pointer registration4(
-                            ImageType* const fixed, 
-                            ImageType* const moving, 
+                            ImageType* const fixed,
+                            ImageType* const moving,
                             CharImageType* const gradient );
 
 #endif // REGISTRATION_H_DEFINED

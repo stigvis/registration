@@ -25,19 +25,19 @@ void CommandIterationUpdate::Execute(const itk::Object * object, const itk::Even
 
 // Median filter
 ImageType::Pointer medianFilter( ImageType* const fixed, int radius ){
-	MedianFilterType::Pointer median = MedianFilterType::New();
+  MedianFilterType::Pointer median = MedianFilterType::New();
   ImageType::SizeType rad;
 
   rad[0] = radius;
   rad[1] = radius;
 
-	median->SetRadius( 	rad );
-	median->SetInput( fixed );
+  median->SetRadius( 	rad );
+  median->SetInput( fixed );
 
   ImageType::Pointer output = median->GetOutput();
   output->Update();
 
-	return output;
+  return output;
 }
 
 // Gradient filter
@@ -83,9 +83,9 @@ RegistrationSimilarityType::Pointer registrationSimilarityContainer(
                                       ImageType* const moving,
                                       OptimizerType::Pointer optimizer  ){
 
-  MetricType::Pointer                   metric        = 
+  MetricType::Pointer                   metric        =
                                       MetricType::New();
-  RegistrationSimilarityType::Pointer   registration  = 
+  RegistrationSimilarityType::Pointer   registration  =
                                       RegistrationSimilarityType::New();
 
   registration->SetMetric(      metric    );
@@ -101,8 +101,8 @@ RegistrationRigidType::Pointer registrationMaskContainer(
                                       ImageType* const moving,
                                       MetricType::Pointer metric,
                                       OptimizerType::Pointer optimizer  ){
-	
-  RegistrationRigidType::Pointer  	    registration  = 
+
+  RegistrationRigidType::Pointer  	    registration  =
                                       RegistrationRigidType::New();
 
   registration->SetMetric(      	metric    	);
@@ -196,25 +196,25 @@ TransformAffineInitializerType::Pointer initializerAffineContainer(
 
 // Resample moving image with rigid transform
 ResampleFilterType::Pointer resampleRigidPointer(
-                                      ImageType* const moving,
                                       ImageType* const fixed,
+                                      ImageType* const moving,
                                       TransformRigidType::Pointer transform ){
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
   resample->SetTransform(               transform                 );
   resample->SetInput(                     moving                  );
-  resample->SetSize( moving->GetLargestPossibleRegion().GetSize() );
-  resample->SetOutputOrigin(        moving->GetOrigin()           );
-  resample->SetOutputSpacing(       moving->GetSpacing()          );
+  resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
+  resample->SetOutputOrigin(         fixed->GetOrigin()           );
+  resample->SetOutputSpacing(        fixed->GetSpacing()          );
   resample->SetDefaultPixelValue(               0.0               );
-  resample->Update();
+  //resample->Update();
   return resample;
 }
 
 // Resample moving image with similarity transform
 ResampleFilterType::Pointer resampleSimilarityPointer(
-                                      ImageType* const moving,
                                       ImageType* const fixed,
+                                      ImageType* const moving,
                                       TransformSimilarityType::Pointer transform ){
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
@@ -231,8 +231,8 @@ ResampleFilterType::Pointer resampleSimilarityPointer(
 
 // Resample moving image with similarity transform
 ResampleFilterType::Pointer resampleAffinePointer(
-                                      ImageType* const moving,
                                       ImageType* const fixed,
+                                      ImageType* const moving,
                                       TransformAffineType::Pointer transform ){
   ResampleFilterType::Pointer resample = ResampleFilterType::New();
 
@@ -261,7 +261,7 @@ DifferenceFilterType::Pointer diffFilter(
 }
 
 // Print results from rigid transform
-void finalRigidParameters( 
+void finalRigidParameters(
                                       TransformRigidType::Pointer transform,
                                       OptimizerType::Pointer optimizer ){
   TransformRigidType::ParametersType finalParameters = transform->GetParameters();
@@ -364,9 +364,9 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
 
 // Print results from mask transform
 void finalMaskParameters( TransformRigidType::Pointer transform,
-													RegistrationRigidType::Pointer registration,
-													OptimizerType::Pointer optimizer ){
-	OptimizerType::ParametersType finalParameters =
+                          RegistrationRigidType::Pointer registration,
+                          OptimizerType::Pointer optimizer ){
+  OptimizerType::ParametersType finalParameters =
                     transform->GetParameters();
   const double finalAngle           = finalParameters[0];
   const double finalRotationCenterX = finalParameters[1];
@@ -376,8 +376,8 @@ void finalMaskParameters( TransformRigidType::Pointer transform,
   const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
   const double bestValue = optimizer->GetValue();
   const double finalAngleInDegrees = finalAngle * 45.0 / std::atan(1.0);
-  
-	std::cout << "Result = " << std::endl;
+
+  std::cout << "Result = " << std::endl;
   std::cout << " Angle (radians) " << finalAngle  << std::endl;
   std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
   std::cout << " Center X      = " << finalRotationCenterX  << std::endl;

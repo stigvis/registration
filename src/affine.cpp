@@ -11,7 +11,7 @@ using namespace std;
 // ===================================
 // Image registration method 3
 // ===================================
-ResampleFilterType::Pointer registration3(
+TransformAffineType::Pointer registration3(
                                         ImageType* const fixed,
                                         ImageType* const moving ){
   // Initialize parameters (see reg1.cpp for description)
@@ -96,6 +96,6 @@ ResampleFilterType::Pointer registration3(
   // Print results
   finalAffineParameters(transform, optimizer );
 
-  return resample;
+  return transform;
 
 }

@@ -94,16 +94,16 @@ ResampleFilterType::Pointer registration4(
     std::cerr << err << std::endl;
     exit(1);
   }
-
+/*
   // Resample new image
   ResampleFilterType::Pointer resample = resampleRigidPointer(
                                         fixed,
                                         moving,
                                         transform );
-
+*/
   // Print results
   finalMaskParameters(transform, registration, optimizer );
 
-  return resample;
+ // return resample;
 
 }

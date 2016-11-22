@@ -18,9 +18,9 @@ TransformRigidType::Pointer registration1(
   // Initialize parameters
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
-  float lrate   = 0.1;                          // Learning rate
-  float slength = 0.0001;                       // Minimum step length
-  int   niter   = 400;                          // Number of iterations
+  float lrate   = 1.0;                          // Learning rate
+  float slength = 0.001;                       // Minimum step length
+  int   niter   = 100;                          // Number of iterations
 
   const unsigned int numberOfLevels = 1;        // 1:1 transform
   const double translationScale = 1.0 / 1000.0;
@@ -88,14 +88,23 @@ TransformRigidType::Pointer registration1(
     exit(1);
   }
 
-  // Resample new image
-  ResampleFilterType::Pointer resample = resampleRigidPointer(
-                                        fixed,
-                                        moving,
-                                        transform );
+  TransformRigidType::Pointer finalTransform = TransformRigidType::New();
+
+  finalTransform->SetParameters( transform->GetParameters() );
+  finalTransform->SetFixedParameters( transform->GetFixedParameters() );
+
+//  OptimizerType::ParametersType finalParameters =
+//                                        transform->GetParameters();
+
+  // Create the output transform
+  CompositeTransformType::Pointer outputTransform =
+                                        CompositeTransformType::New();
+  outputTransform->AddTransform(                   transform            );
+  outputTransform->AddTransform( registration->GetModifiableTransform() );
 
   // Print results
   finalRigidParameters( transform, optimizer );
-  return transform;
-  //return resample;
+  return finalTransform;
+  //return transform;
+  //return outputTransform;
 };
