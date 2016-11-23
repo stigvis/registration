@@ -8,6 +8,13 @@
 #ifndef READIMAGE_H_DEFINED
 #define READIMAGE_H_DEFINED
 #include <vector>
+#include <boost/regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <string>
+#include <iostream>
 
 /**
  * Interleave, BIL or BIP. BSQ not supported.
@@ -122,5 +129,6 @@ void hyperspectral_write_header(const char *filename, int bands, int samples, in
  **/
 void hyperspectral_write_image(const char *filename, int bands, int samples, int lines, float *data);
 
+std::string getValue(std::string hdrText, std::string property);
 
 #endif

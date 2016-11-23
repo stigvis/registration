@@ -17,8 +17,8 @@ TransformSimilarityType::Pointer registration2(
   // TODO: Read from config
   float angle     = 0.0;
   float scale     = 1.0;
-  float lrate     = 1;
-  float slength   = 0.0001;
+  float lrate     = 1.0;
+  float slength   = 0.00001;
   int   niter     = 500;
 
   const unsigned int numberOfLevels = 1;

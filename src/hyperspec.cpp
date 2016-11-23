@@ -38,15 +38,22 @@ Lise_arm_before_occlusion_mnf_inversetransformed.img
 */
 
 void hyperspec_img(const char *filename){
-  // Function for handling .img
+
   // Read hyperspectral header file
+  // See readimage.h for possible error codes.
   struct hyspex_header header;
-  hyperspectral_err_t errcode = hyperspectral_read_header(filename, &header); //see readimage.h for possible error codes.
+  hyperspectral_err_t hyp_errcode
+    = hyperspectral_read_header(filename, &header);
 
   // Read hyperspectral image
   float *img  = new float[header.samples*header.lines*header.bands]();
-  errcode = hyperspectral_read_image(filename, &header, img);
-  // Variable `img` now contains the full hyperspectral image. See also readimage.h for a version of hyperspectral_read_image which reads only a specified subset of the image (using struct image_subset for specifying image subset)
+  hyp_errcode = hyperspectral_read_image(filename, &header, img);
+
+  // Read parameters config
+  //struct reg_params params;
+  //conf_err_t reg_errcode = params_read( &params );
+
+  //cout << "Regmethod: " << params.regmethod << " scale " << params.scale << " translationScale " << params.translationScale << endl;
 
   // Float container for output images
   float *out  = new float[header.samples*header.lines*header.bands]();
@@ -59,7 +66,7 @@ void hyperspec_img(const char *filename){
   // Create and choose diffoutput
   int diff_conf = 1; // TODO: Take as input
 
-  // Create image containers
+  // Create itk image pointers
   ImageType::Pointer fixed     = imageContainer(header);
   ImageType::Pointer moving    = imageContainer(header);
   ImageType::Pointer ffixed    = imageContainer(header);
@@ -71,26 +78,19 @@ void hyperspec_img(const char *filename){
 
   // Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
-
-  GradientFilterType::Pointer gradient      = gradientFilter( fixed, sigma );
-  CastFilterType::Pointer     castFixed     = castImage( fixed );
-  CastFilterType::Pointer     castGradient  = castImage( gradient->GetOutput() );
-
+/*
+  GradientFilterType::Pointer gradient
+    = gradientFilter( fixed, sigma );
+  CastFilterType::Pointer     castFixed
+    = castImage( fixed );
+  CastFilterType::Pointer     castGradient
+    = castImage( gradient->GetOutput() );
+*/
+  // Initiate pointers
   ResampleFilterType::Pointer       registration;
   TransformRigidType::Pointer       rigid_transform;
   TransformSimilarityType::Pointer  similarity_transform;
   TransformAffineType::Pointer      affine_transform;
-/*
-  // Get fixed image
-  for (int j=0; j < header.lines; j++){
-    for (int k=0; k < header.samples; k++){
-      ImageType::IndexType pixelIndex;
-      pixelIndex[0] = k;
-      pixelIndex[1] = j;
-      fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + ( header.bands / 2 )*header.samples + k]);
-    }
-  }
-*/
 
   // Read fixed image
   int i = header.bands / 2;
@@ -102,24 +102,17 @@ void hyperspec_img(const char *filename){
   // Read images for processing
   // Image i=0 is fixed
   for (int i=0; i < header.bands; i++){
-    /*
-    for (int j=0; j < header.lines; j++){
-      for (int k=0; k < header.samples; k++){
-        ImageType::IndexType pixelIndex;
-        pixelIndex[0] = k;
-        pixelIndex[1] = j;
-        moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
-      }
-    }*/
 
     // Read moving image
-    moving = readITK( moving, img, i, header ); 
-    
-    fmoving = medianFilter( moving, 1 );
+    moving = readITK( moving, img, i, header );
+
+    // Apply filter
+    fmoving = medianFilter( moving, sigma );
     fmoving->Update();
 
     // Throw to registration handler
-    if (regmethod == 1){                              // Rigid transform
+    // Rigid transform
+    if (regmethod == 1){
       rigid_transform = registration1(
                                   ffixed,
                                   fmoving );
@@ -130,7 +123,8 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
-    } else if (regmethod == 2){                       // Similarity transform
+      // Similarity transform
+    } else if (regmethod == 2){
       similarity_transform = registration2(
                                   ffixed,
                                   fmoving );
@@ -141,7 +135,8 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
-    } else if (regmethod == 3){                       // Affine transform
+      // Affine transform
+    } else if (regmethod == 3){
       affine_transform = registration3(
                                   ffixed,
                                   fmoving );
@@ -153,7 +148,7 @@ void hyperspec_img(const char *filename){
                                   moving,
                                   registration );
     } else {
-      cout << "Specify a method from 1-4. Falling back to method 3, Affine" << endl;
+      cout << "Specify a method from 1-3. Falling back to method 3, Affine" << endl;
       affine_transform = registration3( ffixed, fmoving );
       registration = resampleAffinePointer(
                                   fixed,
@@ -164,39 +159,54 @@ void hyperspec_img(const char *filename){
                                   registration );
     }
 
-    cout << "Done with " << i + 1 << " of " << header.bands << endl;
 
-    // Add to output
+    // Add to output containers
     output = registration->GetOutput();
     output->Update();
 
     outdiff = difference->GetOutput();
     outdiff->Update();
 
+/*
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        out[j*header.samples*header.bands + i*header.samples + k] = output->GetPixel(pixelIndex);
+        out[j*header.samples*header.bands + i*header.samples + k] = registration->GetOutput()->GetPixel(pixelIndex);
 
         // Compute the difference between the images before and after registration
         // (If we want a visible diff-image)
         if ( diff_conf == 1 ){ // TODO: Take from config
-          diff[j*header.samples*header.bands + i*header.samples + k] = outdiff->GetPixel(pixelIndex);
+          diff[j*header.samples*header.bands + i*header.samples + k] = difference->GetOutput()->GetPixel(pixelIndex);
         }
       }
     }
-  }
+*/
+    // Update output array(s)
+    out = writeITK( output, out, i, header );
+    if ( diff_conf == 1){
+      diff = writeITK( outdiff, diff, i, header );
+    }
 
-  hyperspectral_write_header( "test_out", header.bands, header.samples, header.lines, header.wlens );
-  hyperspectral_write_image( "test_out", header.bands, header.samples, header.lines, out );
+    cout << "Done with " << i + 1 << " of " << header.bands << endl;
+
+  }
+  // Write to .img container
+  // See readimage.h
+  hyperspectral_write_header( "test_out", header.bands,
+    header.samples, header.lines, header.wlens );
+  hyperspectral_write_image( "test_out", header.bands,
+    header.samples, header.lines, out );
 
   if ( diff_conf == 1){
-    hyperspectral_write_header( "test_diff", header.bands, header.samples, header.lines, header.wlens );
-    hyperspectral_write_image( "test_diff", header.bands, header.samples, header.lines, diff );
+    hyperspectral_write_header( "test_diff", header.bands,
+      header.samples, header.lines, header.wlens );
+    hyperspectral_write_image( "test_diff", header.bands,
+      header.samples, header.lines, diff );
   }
 
+  // Clear memory
   delete [] out;
   delete [] diff;
   delete [] img;
@@ -315,8 +325,162 @@ ImageType::Pointer readITK( ImageType* const itkimg,
       ImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
       pixelIndex[1] = j;
-      itkimg->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
+      itkimg->SetPixel(pixelIndex, img[j*header.samples*header.bands
+        + i*header.samples + k]);
     }
   }
   return itkimg;
+}
+
+// Writing from image container
+float* writeITK(            ImageType* const itkimg,
+                            float *image,
+                            int i,
+                            struct hyspex_header header ){
+
+  for (int j=0; j < header.lines; j++){
+    for (int k=0; k < header.samples; k++){
+      ImageType::IndexType pixelIndex;
+      pixelIndex[0] = k;
+      pixelIndex[1] = j;
+      image[j*header.samples*header.bands + i*header.samples + k]
+        = itkimg->GetPixel(pixelIndex);
+    }
+  }
+  return image;
+}
+
+// Reading parameters from config
+conf_err_t params_read( struct reg_params *params ){
+
+  const int MAX_CHAR = 512;
+  const int MAX_FILE_SIZE = 4000;
+  string confName = "params.conf";
+
+  // Open for reading
+  FILE *fp = fopen("params.conf", "rt");
+  if (fp == NULL){
+    return CONF_FILE_NOT_FOUND;
+  }
+  char confText[MAX_FILE_SIZE] = "";
+  int sizeRead = 1;
+  int offset = 0;
+  while (sizeRead){
+    sizeRead = fread(confText + offset, sizeof(char), MAX_CHAR, fp);
+    offset += sizeRead/sizeof(char);
+  }
+  fclose(fp);
+
+  // Extract parameters from config
+  string regmethod  = getValue(confText, "regmethod");
+  string diff_conf  = getValue(confText, "diff_conf");
+  string median     = getValue(confText, "median"   );
+  string gradient   = getValue(confText, "gradient" );
+  string sigma      = getValue(confText, "sigma"    );
+  string angle      = getValue(confText, "angle"    );
+  string scale      = getValue(confText, "scale"    );
+  string lrate      = getValue(confText, "lrate"    );
+  string slength    = getValue(confText, "slength"  );
+  string niter      = getValue(confText, "niter"    );
+  string numberOfLevels
+                    = getValue(confText, "numoflev" );
+  string translationScale
+                    = getValue(confText, "tscale"   );
+
+  // Convert strings to values
+  // Set default values for missing strings
+  if (regmethod.empty()){
+    params->regmethod = 1;
+    fprintf(stderr, "Missing regmethod, setting to default value: %d\n", params->regmethod);
+  //  cout << "Missing regmethod, setting to default value: "
+  //    << params->regmethod << endl;
+  } else {
+    params->regmethod = strtod(regmethod.c_str(), NULL);
+  }
+  if (diff_conf.empty()){
+    params->diff_conf = 1;
+    cout << "Missing diff_conf, setting to default value: "
+      << params->diff_conf << endl;
+  } else {
+    params->diff_conf = strtod(diff_conf.c_str(), NULL);
+  }
+  if (median.empty()){
+    params->median    = 0;
+    cout << "Missing median, setting to default value: "
+      << params->median << endl;
+  } else {
+    params->median    = strtod(median.c_str(),    NULL);
+  }
+  if (gradient.empty()){
+    params->gradient  = 0;
+    cout << "Missing gradient, setting to default value: "
+      << params->gradient << endl;
+  } else {
+    params->gradient  = strtod(gradient.c_str(),  NULL);
+  }
+  if (sigma.empty()){
+    params->sigma     = 1;
+    cout << "Missing sigma, setting to default value: "
+      << params->sigma << endl;
+  } else {
+    params->sigma     = strtod(sigma.c_str(),     NULL);
+  }
+  if (angle.empty()){
+    params->angle     = 0.0;
+    cout << "Missing angle, setting to default value: "
+      << params->angle << endl;
+  } else {
+    params->angle     = strtod(angle.c_str(),     NULL);
+  }
+  if (scale.empty()){
+    params->scale     = 1.0;
+    cout << "Missing scale, setting to default value: "
+      << params->scale << endl;
+  } else {
+    params->scale     = strtod(scale.c_str(),     NULL);
+  }
+  if (lrate.empty()){
+    params->lrate     = 1.0;
+    cout << "Missing lrate, setting to default value: "
+      << params->lrate << endl;
+  } else {
+    params->lrate     = strtod(lrate.c_str(),     NULL);
+  }
+  if (slength.empty()){
+    params->slength   = 0.0001;
+    cout << "Missing slength, setting to default value: "
+      << params->slength << endl;
+  } else {
+    params->slength   = strtod(slength.c_str(),   NULL);
+  }
+  if (niter.empty()){
+    params->niter     = 300;
+    cout << "Missing niter, setting to default value: "
+      << params->niter << endl;
+  } else {
+    params->niter     = strtod(niter.c_str(),     NULL);
+  }
+  if (numberOfLevels.empty()){
+    params->numberOfLevels
+                      = 1;
+    cout << "Missing numoflev, setting to default value: "
+      << params->numberOfLevels << endl;
+  } else {
+    params->numberOfLevels
+                      = strtod(numberOfLevels.c_str(),
+                                                  NULL);
+  }
+  if (translationScale.empty()){
+    params->translationScale
+                      = 1.0 / 1000.0;
+    cout << "Missing tscale, setting to default value: "
+      << params->translationScale << endl;
+  } else {
+    params->translationScale
+                      = strtod(translationScale.c_str(),
+                                                  NULL);
+  }
+  fprintf(stderr, "hurr durr%d\n ", params->translationScale );
+  cout << "hurr durr test" << endl;
+  return CONF_NO_ERR;
 }

@@ -6,13 +6,6 @@
 //=======================================================================================================
 
 #include "readimage.h"
-#include <boost/regex.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <string>
-#include <iostream>
 using namespace std;
 
 const int MAX_CHAR = 512;
@@ -21,7 +14,7 @@ const int MAX_FILE_SIZE = 4000;
 int getMatch(string input_string, regmatch_t *matchArray, int matchNum, string *match);
 
 //extract specified property value from header text as a char array
-string getValue(string hdrText, string property);
+//string getValue(string hdrText, string property);
 
 //return list of wavelengths. Input: char array containing characters {wlen1, wlen2, wlen3, ...}
 vector<float> getWavelengths(int bands, string wavelengthStr);
@@ -194,7 +187,7 @@ string getValue(string hdrText, string property){
 	int retcode = regcomp(&propertyMatch, regexExpr, REG_EXTENDED | REG_NEWLINE | REG_PERL);
 	int match = regexec(&propertyMatch, hdrText.c_str(), numMatch, matchArray, 0);
 	if (match != 0){
-		fprintf(stderr, "Could not find property in header file: %s\n", property.c_str());
+		fprintf(stderr, "Could not find parameter in file: %s\n", property.c_str());
 		regfree(&propertyMatch);
 		free(matchArray);
 		return NULL;
