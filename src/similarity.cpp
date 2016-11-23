@@ -10,7 +10,7 @@
 // =================================================
 // Image registration method 2, similarity transform
 // =================================================
-ResampleFilterType::Pointer registration2(
+TransformSimilarityType::Pointer registration2(
                                         ImageType* const fixed,
                                         ImageType* const moving ){
   // Initialize parameters (see reg1.cpp for description)
@@ -96,6 +96,6 @@ ResampleFilterType::Pointer registration2(
   // Print results
   finalSimilarityParameters(transform, optimizer );
 
-  return resample;
+  return transform;
 
 }

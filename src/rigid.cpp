@@ -19,8 +19,8 @@ TransformRigidType::Pointer registration1(
   // TODO: Read parameters from config
   float angle   = 0.0;                          // Transform angle
   float lrate   = 1.0;                          // Learning rate
-  float slength = 0.001;                       // Minimum step length
-  int   niter   = 100;                          // Number of iterations
+  float slength = 0.00001;                       // Minimum step length
+  int   niter   = 200;                          // Number of iterations
 
   const unsigned int numberOfLevels = 1;        // 1:1 transform
   const double translationScale = 1.0 / 1000.0;

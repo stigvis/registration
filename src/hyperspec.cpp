@@ -72,14 +72,15 @@ void hyperspec_img(const char *filename){
   // Create and setup a gradient filter
   int sigma = 1; // TODO: Take as input
 
-  GradientFilterType::Pointer gradient = gradientFilter( fixed, sigma );
-  CastFilterType::Pointer castFixed     = castImage( fixed );
-  CastFilterType::Pointer castGradient  = castImage( gradient->GetOutput() );
+  GradientFilterType::Pointer gradient      = gradientFilter( fixed, sigma );
+  CastFilterType::Pointer     castFixed     = castImage( fixed );
+  CastFilterType::Pointer     castGradient  = castImage( gradient->GetOutput() );
 
-  ResampleFilterType::Pointer registration;
-  TransformRigidType::Pointer composite_transform;
-  TransformAffineType::Pointer affine_transform;
-
+  ResampleFilterType::Pointer       registration;
+  TransformRigidType::Pointer       rigid_transform;
+  TransformSimilarityType::Pointer  similarity_transform;
+  TransformAffineType::Pointer      affine_transform;
+/*
   // Get fixed image
   for (int j=0; j < header.lines; j++){
     for (int k=0; k < header.samples; k++){
@@ -89,51 +90,61 @@ void hyperspec_img(const char *filename){
       fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + ( header.bands / 2 )*header.samples + k]);
     }
   }
+*/
+
+  // Read fixed image
+  int i = header.bands / 2;
+  fixed = readITK( fixed, img, i, header );
 
   ffixed = medianFilter( fixed, 1 );
   ffixed->Update();
 
-
   // Read images for processing
   // Image i=0 is fixed
   for (int i=0; i < header.bands; i++){
+    /*
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
         pixelIndex[0] = k;
         pixelIndex[1] = j;
-        /*if (i == 1){
-          fixed->SetPixel(pixelIndex, img[j*header.samples*header.bands + (i-1)*header.samples + k]);
-          out[j*header.samples*header.bands + (i-1)*header.samples + k] =
-                                      img[j*header.samples*header.bands + (i-1)*header.samples + k];
-        }*/
         moving->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
       }
-    }
-/*
-    if ( i > 1 ){
-      fixed = registration->GetOutput();
-      fixed->Update();
-    }
-    ffixed = medianFilter( fixed, 1 );
-    ffixed->Update();*/
+    }*/
+
+    // Read moving image
+    moving = readITK( moving, img, i, header ); 
+    
     fmoving = medianFilter( moving, 1 );
     fmoving->Update();
 
     // Throw to registration handler
     if (regmethod == 1){                              // Rigid transform
-      composite_transform = registration1( ffixed, fmoving );
+      rigid_transform = registration1(
+                                  ffixed,
+                                  fmoving );
       registration = resampleRigidPointer(
                                   fixed,
                                   moving,
-                                  composite_transform );
+                                  rigid_transform );
       difference = diffFilter(
                                   moving,
                                   registration );
     } else if (regmethod == 2){                       // Similarity transform
-      registration = registration2( fixed, moving );
+      similarity_transform = registration2(
+                                  ffixed,
+                                  fmoving );
+      registration = resampleSimilarityPointer(
+                                  fixed,
+                                  moving,
+                                  similarity_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
     } else if (regmethod == 3){                       // Affine transform
-      affine_transform = registration3( ffixed, fmoving );
+      affine_transform = registration3(
+                                  ffixed,
+                                  fmoving );
       registration = resampleAffinePointer(
                                   fixed,
                                   moving,
@@ -141,12 +152,6 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
-    /*} else if (regmethod == 4){                       // Rigid transform + mask
-      CastFilterType::Pointer castMoving = castImage ( moving );
-      registration = registration4( fixed,
-                                    moving,
-                                    castGradient->GetOutput() ); // See registration.cpp
-    */
     } else {
       cout << "Specify a method from 1-4. Falling back to method 3, Affine" << endl;
       affine_transform = registration3( ffixed, fmoving );
@@ -160,16 +165,14 @@ void hyperspec_img(const char *filename){
     }
 
     cout << "Done with " << i + 1 << " of " << header.bands << endl;
+
+    // Add to output
     output = registration->GetOutput();
     output->Update();
 
-    //DifferenceFilterType::Pointer difference = diffFilter(
-    //                                       moving,
-    //                                       registration ); // See registration.cpp
     outdiff = difference->GetOutput();
     outdiff->Update();
 
-    // Add to output
     for (int j=0; j < header.lines; j++){
       for (int k=0; k < header.samples; k++){
         ImageType::IndexType pixelIndex;
@@ -299,4 +302,21 @@ ImageType::Pointer imageContainer( struct hyspex_header header ){
   container->SetRegions(region);
   container->Allocate();
   return container;
+}
+
+// Reading to image container
+ImageType::Pointer readITK( ImageType* const itkimg,
+                            float *img,
+                            int i,
+                            struct hyspex_header header ){
+
+  for (int j=0; j < header.lines; j++){
+    for (int k=0; k < header.samples; k++){
+      ImageType::IndexType pixelIndex;
+      pixelIndex[0] = k;
+      pixelIndex[1] = j;
+      itkimg->SetPixel(pixelIndex, img[j*header.samples*header.bands + i*header.samples + k]);
+    }
+  }
+  return itkimg;
 }

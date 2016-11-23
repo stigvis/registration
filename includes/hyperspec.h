@@ -18,5 +18,8 @@ void hyperspec_img( const char *filename );
 void hyperspec_mat( const char *filename );
 
 ImageType::Pointer imageContainer( struct hyspex_header header );
-
+ImageType::Pointer readITK( ImageType* const itkimg,
+                            float *img,
+                            int i,
+                            struct hyspex_header header );
 #endif // HYPERSPEC_READ_H_DEFINED

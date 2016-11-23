@@ -218,7 +218,7 @@ void finalMaskParameters( TransformRigidType::Pointer transform,
 TransformRigidType::Pointer registration1(
                             ImageType* const fixed,
                             ImageType* const moving );
-ResampleFilterType::Pointer registration2(
+TransformSimilarityType::Pointer registration2(
                             ImageType* const fixed,
                             ImageType* const moving );
 TransformAffineType::Pointer registration3(
