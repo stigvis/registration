@@ -129,6 +129,5 @@ void hyperspectral_write_header(const char *filename, int bands, int samples, in
  **/
 void hyperspectral_write_image(const char *filename, int bands, int samples, int lines, float *data);
 
-std::string getValue(std::string hdrText, std::string property);
 
 #endif

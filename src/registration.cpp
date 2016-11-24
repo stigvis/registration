@@ -41,14 +41,14 @@ ImageType::Pointer medianFilter( ImageType* const fixed, int radius ){
 }
 
 // Gradient filter
-GradientFilterType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
+ImageType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
   GradientFilterType::Pointer gradient = GradientFilterType::New();
 
   gradient->SetSigma( sigma );
   gradient->SetInput( fixed );
   gradient->Update();
 
-  return gradient;
+  return gradient->GetOutput();
 }
 
 // Cast float to unsigned char

@@ -12,17 +12,8 @@
 // =================================================
 TransformSimilarityType::Pointer registration2(
                                         ImageType* const fixed,
-                                        ImageType* const moving ){
-  // Initialize parameters (see reg1.cpp for description)
-  // TODO: Read from config
-  float angle     = 0.0;
-  float scale     = 1.0;
-  float lrate     = 1.0;
-  float slength   = 0.00001;
-  int   niter     = 500;
-
-  const unsigned int numberOfLevels = 1;
-  const double translationScale = 1.0 / 100.0;
+                                        ImageType* const moving,
+                                        reg_params params ){
 
   // Optimizer and Registration containers
   OptimizerType::Pointer    optimizer     = OptimizerType::New();
@@ -39,8 +30,8 @@ TransformSimilarityType::Pointer registration2(
                                         transform );
 
   // Set parameters
-  transform->SetScale( scale );
-  transform->SetAngle( angle );
+  transform->SetScale( params.scale );
+  transform->SetAngle( params.angle );
 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
@@ -49,15 +40,15 @@ TransformSimilarityType::Pointer registration2(
 
   optimizerScales[0] = 10.0;
   optimizerScales[1] =  1.0;
-  optimizerScales[2] =  translationScale;
-  optimizerScales[3] =  translationScale;
-  optimizerScales[4] =  translationScale;
-  optimizerScales[5] =  translationScale;
+  optimizerScales[2] =  params.translationScale;
+  optimizerScales[3] =  params.translationScale;
+  optimizerScales[4] =  params.translationScale;
+  optimizerScales[5] =  params.translationScale;
 
-  optimizer->SetScales(   optimizerScales   );
-  optimizer->SetLearningRate(     lrate     );
-  optimizer->SetMinimumStepLength( slength  );
-  optimizer->SetNumberOfIterations( niter   );
+  optimizer->SetScales(       optimizerScales     );
+  optimizer->SetLearningRate(     params.lrate    );
+  optimizer->SetMinimumStepLength( params.slength );
+  optimizer->SetNumberOfIterations( params.niter  );
 
   CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
   optimizer->AddObserver( itk::IterationEvent(), observer );
@@ -70,7 +61,7 @@ TransformSimilarityType::Pointer registration2(
   smoothingSigmasPerLevel.SetSize( 1 );
   smoothingSigmasPerLevel[0] = 0;
 
-  registration->SetNumberOfLevels(          numberOfLevels          );
+  registration->SetNumberOfLevels(          params.numberOfLevels   );
   registration->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel );
   registration->SetShrinkFactorsPerLevel(   shrinkFactorsPerLevel   );
 

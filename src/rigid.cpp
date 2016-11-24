@@ -9,21 +9,12 @@
 using namespace std;
 
 // ===================================
-// Image registration method 1 
+// Image registration method 1
 // ===================================
-TransformRigidType::Pointer registration1( 
-                                        ImageType* const fixed, 
-                                        ImageType* const moving ){
-
-  // Initialize parameters
-  // TODO: Read parameters from config
-  float angle   = 0.0;                          // Transform angle
-  float lrate   = 0.5;                          // Learning rate
-  float slength = 0.000001;                       // Minimum step length
-  int   niter   = 400;                          // Number of iterations
-
-  const unsigned int numberOfLevels = 1;        // 1:1 transform
-  const double translationScale = 1.0 / 1000.0;
+TransformRigidType::Pointer registration1(
+                                        ImageType* const fixed,
+                                        ImageType* const moving,
+                                        reg_params params ){
 
   // Optimizer and Registration containers
   OptimizerType::Pointer          optimizer     = OptimizerType::New();
@@ -40,7 +31,7 @@ TransformRigidType::Pointer registration1(
                                         transform );
 
   // Set parameters
-  transform->SetAngle( angle );
+  transform->SetAngle( params.angle );
 
   registration->SetInitialTransform( transform );
   registration->InPlaceOn();
@@ -48,15 +39,15 @@ TransformRigidType::Pointer registration1(
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );
 
   optimizerScales[0] = 1.0;
-  optimizerScales[1] = translationScale;
-  optimizerScales[2] = translationScale;
-  optimizerScales[3] = translationScale;
-  optimizerScales[4] = translationScale;
+  optimizerScales[1] = params.translationScale;
+  optimizerScales[2] = params.translationScale;
+  optimizerScales[3] = params.translationScale;
+  optimizerScales[4] = params.translationScale;
 
-  optimizer->SetScales(   optimizerScales  );
-  optimizer->SetLearningRate(     lrate    );
-  optimizer->SetMinimumStepLength( slength );
-  optimizer->SetNumberOfIterations( niter  );
+  optimizer->SetScales(       optimizerScales     );
+  optimizer->SetLearningRate(     params.lrate    );
+  optimizer->SetMinimumStepLength( params.slength );
+  optimizer->SetNumberOfIterations( params.niter  );
 
   // Create the command observer and register it with the optimizer
   CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
@@ -71,7 +62,7 @@ TransformRigidType::Pointer registration1(
   smoothingSigmasPerLevel.SetSize ( 1 );
   smoothingSigmasPerLevel[0] = 0;
 
-  registration->SetNumberOfLevels(          numberOfLevels          );
+  registration->SetNumberOfLevels(      params.numberOfLevels       );
   registration->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel );
   registration->SetShrinkFactorsPerLevel(   shrinkFactorsPerLevel   );
 
@@ -88,13 +79,10 @@ TransformRigidType::Pointer registration1(
     exit(1);
   }
 
+  // Get final transform
   TransformRigidType::Pointer finalTransform = TransformRigidType::New();
-
   finalTransform->SetParameters( transform->GetParameters() );
   finalTransform->SetFixedParameters( transform->GetFixedParameters() );
-
-//  OptimizerType::ParametersType finalParameters =
-//                                        transform->GetParameters();
 
   // Create the output transform
   CompositeTransformType::Pointer outputTransform =
@@ -104,7 +92,6 @@ TransformRigidType::Pointer registration1(
 
   // Print results
   finalRigidParameters( transform, optimizer );
+
   return finalTransform;
-  //return transform;
-  //return outputTransform;
 };

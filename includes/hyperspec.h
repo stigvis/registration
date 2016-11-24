@@ -5,7 +5,11 @@
 // http://opensource.org/licenses/MIT
 // =========================================================================
 
-#include "registration.h"
+
+#include <iostream>
+#include <sstream>
+#include <string>
+#include "string.h"
 
 #ifndef HYPERSPEC_H_DEFINED
 #define HYPERSPEC_H_DEFINED
@@ -21,9 +25,11 @@ struct reg_params {
   int diff_conf;
   // Median filter
   int median;
+  // Level of median filtering
+  int radius;
   // Gradient filter
   int gradient;
-  // Level of filtering
+  // Level of gradient filtering
   int sigma;
   // Initial transform angle
   float angle;
@@ -54,19 +60,25 @@ enum conf_err_t {
   CONF_FILE_READING_ERROR
 };
 
-// Read parameters
+// Initialize parameters
 conf_err_t params_read( struct reg_params *params);
+
+// Read config
+std::string getParam(std::string confText, std::string property);
 
 // Function that reads an .img file and splits into .tif files
 void hyperspec_img( const char *filename );
 // Function that reads a .mat file and splits into .tif files
 void hyperspec_mat( const char *filename );
 
+#include "registration.h"
+
 ImageType::Pointer imageContainer( struct hyspex_header header );
 ImageType::Pointer readITK( ImageType* const itkimg,
                             float *img,
                             int i,
                             struct hyspex_header header );
+
 float* writeITK(            ImageType* const itkimg,
                             float *image,
                             int i,

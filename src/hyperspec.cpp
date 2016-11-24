@@ -9,18 +9,10 @@
 #include "registration.h"
 #include "tiffio.h"
 #include "matio.h"
-#include <iostream>
-#include <sstream>
-#include <string>
-#include "string.h"
 #include "hyperspec.h"
 using namespace std;
 
 /* TODO:
-
-Read from config file
-//> http://www.hyperrealm.com/libconfig/
-//> https://en.wikipedia.org/wiki/Configuration_file
 
 Testing:
 Lise_arm_before_occlusion_mnf_inversetransformed.img
@@ -34,10 +26,13 @@ Lise_arm_before_occlusion_mnf_inversetransformed.img
 -> 14: -20 deg
 -> 16: -40 deg
 
-
 */
 
 void hyperspec_img(const char *filename){
+
+  // Read parameters config
+  struct reg_params params;
+  conf_err_t reg_errcode = params_read( &params );
 
   // Read hyperspectral header file
   // See readimage.h for possible error codes.
@@ -49,43 +44,24 @@ void hyperspec_img(const char *filename){
   float *img  = new float[header.samples*header.lines*header.bands]();
   hyp_errcode = hyperspectral_read_image(filename, &header, img);
 
-  // Read parameters config
-  //struct reg_params params;
-  //conf_err_t reg_errcode = params_read( &params );
-
-  //cout << "Regmethod: " << params.regmethod << " scale " << params.scale << " translationScale " << params.translationScale << endl;
-
   // Float container for output images
   float *out  = new float[header.samples*header.lines*header.bands]();
   // Float container for output images that show diff between input and output
   float *diff = new float[header.samples*header.lines*header.bands]();
 
-  // Choose registration method
-  int regmethod = 1; // TODO: Take from config
-
-  // Create and choose diffoutput
-  int diff_conf = 1; // TODO: Take as input
-
   // Create itk image pointers
+  // Input images
   ImageType::Pointer fixed     = imageContainer(header);
   ImageType::Pointer moving    = imageContainer(header);
+  // Filtered images
   ImageType::Pointer ffixed    = imageContainer(header);
   ImageType::Pointer fmoving   = imageContainer(header);
+  // Output images
   ImageType::Pointer output    = imageContainer(header);
   ImageType::Pointer outdiff   = imageContainer(header);
+  // Difference image
   DifferenceFilterType::Pointer difference = DifferenceFilterType::New();
 
-
-  // Create and setup a gradient filter
-  int sigma = 1; // TODO: Take as input
-/*
-  GradientFilterType::Pointer gradient
-    = gradientFilter( fixed, sigma );
-  CastFilterType::Pointer     castFixed
-    = castImage( fixed );
-  CastFilterType::Pointer     castGradient
-    = castImage( gradient->GetOutput() );
-*/
   // Initiate pointers
   ResampleFilterType::Pointer       registration;
   TransformRigidType::Pointer       rigid_transform;
@@ -96,8 +72,16 @@ void hyperspec_img(const char *filename){
   int i = header.bands / 2;
   fixed = readITK( fixed, img, i, header );
 
-  ffixed = medianFilter( fixed, 1 );
-  ffixed->Update();
+  // Filter image
+  ffixed = fixed;
+  if (params.median == 1){
+    ffixed = medianFilter( ffixed, params.sigma );
+    ffixed->Update();
+  }
+  if (params.gradient == 1){
+    ffixed = gradientFilter( ffixed, params.sigma );
+    ffixed->Update();
+  }
 
   // Read images for processing
   // Image i=0 is fixed
@@ -106,16 +90,24 @@ void hyperspec_img(const char *filename){
     // Read moving image
     moving = readITK( moving, img, i, header );
 
-    // Apply filter
-    fmoving = medianFilter( moving, sigma );
-    fmoving->Update();
+    // Filter images
+    fmoving = moving;
+    if ( params.median == 1){
+      fmoving = medianFilter( fmoving, params.sigma );
+      fmoving->Update();
+    }
+    if ( params.gradient == 1){
+      fmoving = gradientFilter( fmoving, params.sigma );
+      fmoving->Update();
+    }
 
     // Throw to registration handler
     // Rigid transform
-    if (regmethod == 1){
+    if (params.regmethod == 1){
       rigid_transform = registration1(
                                   ffixed,
-                                  fmoving );
+                                  fmoving,
+                                  params );
       registration = resampleRigidPointer(
                                   fixed,
                                   moving,
@@ -124,10 +116,11 @@ void hyperspec_img(const char *filename){
                                   moving,
                                   registration );
       // Similarity transform
-    } else if (regmethod == 2){
+    } else if (params.regmethod == 2){
       similarity_transform = registration2(
                                   ffixed,
-                                  fmoving );
+                                  fmoving,
+                                  params );
       registration = resampleSimilarityPointer(
                                   fixed,
                                   moving,
@@ -136,20 +129,11 @@ void hyperspec_img(const char *filename){
                                   moving,
                                   registration );
       // Affine transform
-    } else if (regmethod == 3){
+    } else if (params.regmethod == 3){
       affine_transform = registration3(
                                   ffixed,
-                                  fmoving );
-      registration = resampleAffinePointer(
-                                  fixed,
-                                  moving,
-                                  affine_transform );
-      difference = diffFilter(
-                                  moving,
-                                  registration );
-    } else {
-      cout << "Specify a method from 1-3. Falling back to method 3, Affine" << endl;
-      affine_transform = registration3( ffixed, fmoving );
+                                  fmoving,
+                                  params );
       registration = resampleAffinePointer(
                                   fixed,
                                   moving,
@@ -158,7 +142,6 @@ void hyperspec_img(const char *filename){
                                   moving,
                                   registration );
     }
-
 
     // Add to output containers
     output = registration->GetOutput();
@@ -167,25 +150,9 @@ void hyperspec_img(const char *filename){
     outdiff = difference->GetOutput();
     outdiff->Update();
 
-/*
-    for (int j=0; j < header.lines; j++){
-      for (int k=0; k < header.samples; k++){
-        ImageType::IndexType pixelIndex;
-        pixelIndex[0] = k;
-        pixelIndex[1] = j;
-        out[j*header.samples*header.bands + i*header.samples + k] = registration->GetOutput()->GetPixel(pixelIndex);
-
-        // Compute the difference between the images before and after registration
-        // (If we want a visible diff-image)
-        if ( diff_conf == 1 ){ // TODO: Take from config
-          diff[j*header.samples*header.bands + i*header.samples + k] = difference->GetOutput()->GetPixel(pixelIndex);
-        }
-      }
-    }
-*/
     // Update output array(s)
     out = writeITK( output, out, i, header );
-    if ( diff_conf == 1){
+    if ( params.diff_conf == 1){
       diff = writeITK( outdiff, diff, i, header );
     }
 
@@ -199,7 +166,7 @@ void hyperspec_img(const char *filename){
   hyperspectral_write_image( "test_out", header.bands,
     header.samples, header.lines, out );
 
-  if ( diff_conf == 1){
+  if ( params.diff_conf == 1){
     hyperspectral_write_header( "test_diff", header.bands,
       header.samples, header.lines, header.wlens );
     hyperspectral_write_image( "test_diff", header.bands,
@@ -350,11 +317,12 @@ float* writeITK(            ImageType* const itkimg,
   return image;
 }
 
+const int MAX_CHAR = 512;
+const int MAX_FILE_SIZE = 4000;
+
 // Reading parameters from config
 conf_err_t params_read( struct reg_params *params ){
 
-  const int MAX_CHAR = 512;
-  const int MAX_FILE_SIZE = 4000;
   string confName = "params.conf";
 
   // Open for reading
@@ -369,35 +337,37 @@ conf_err_t params_read( struct reg_params *params ){
     sizeRead = fread(confText + offset, sizeof(char), MAX_CHAR, fp);
     offset += sizeRead/sizeof(char);
   }
-  fclose(fp);
 
   // Extract parameters from config
-  string regmethod  = getValue(confText, "regmethod");
-  string diff_conf  = getValue(confText, "diff_conf");
-  string median     = getValue(confText, "median"   );
-  string gradient   = getValue(confText, "gradient" );
-  string sigma      = getValue(confText, "sigma"    );
-  string angle      = getValue(confText, "angle"    );
-  string scale      = getValue(confText, "scale"    );
-  string lrate      = getValue(confText, "lrate"    );
-  string slength    = getValue(confText, "slength"  );
-  string niter      = getValue(confText, "niter"    );
+  string regmethod  = getParam(confText, "regmethod");
+  string diff_conf  = getParam(confText, "diff_conf");
+  string median     = getParam(confText, "median"   );
+  string radius     = getParam(confText, "radius"   );
+  string gradient   = getParam(confText, "gradient" );
+  string sigma      = getParam(confText, "sigma"    );
+  string angle      = getParam(confText, "angle"    );
+  string scale      = getParam(confText, "scale"    );
+  string lrate      = getParam(confText, "lrate"    );
+  string slength    = getParam(confText, "slength"  );
+  string niter      = getParam(confText, "niter"    );
   string numberOfLevels
-                    = getValue(confText, "numoflev" );
+                    = getParam(confText, "numoflev" );
   string translationScale
-                    = getValue(confText, "tscale"   );
+                    = getParam(confText, "tscale"   );
+
+  cout << "Reading parameters from params.conf" << endl;
 
   // Convert strings to values
   // Set default values for missing strings
-  if (regmethod.empty()){
+  if (regmethod == "" ){
     params->regmethod = 1;
     fprintf(stderr, "Missing regmethod, setting to default value: %d\n", params->regmethod);
-  //  cout << "Missing regmethod, setting to default value: "
-  //    << params->regmethod << endl;
+    cout << "Missing regmethod, setting to default value: "
+      << params->regmethod << endl;
   } else {
     params->regmethod = strtod(regmethod.c_str(), NULL);
   }
-  if (diff_conf.empty()){
+  if (diff_conf == ""){
     params->diff_conf = 1;
     cout << "Missing diff_conf, setting to default value: "
       << params->diff_conf << endl;
@@ -405,11 +375,18 @@ conf_err_t params_read( struct reg_params *params ){
     params->diff_conf = strtod(diff_conf.c_str(), NULL);
   }
   if (median.empty()){
-    params->median    = 0;
+    params->median    = 1;
     cout << "Missing median, setting to default value: "
       << params->median << endl;
   } else {
     params->median    = strtod(median.c_str(),    NULL);
+  }
+  if (radius.empty()){
+    params->radius    = 1;
+    cout << "Missing radius, setting to default value: "
+      << params->radius << endl;
+  } else {
+    params->radius    = strtod(radius.c_str(),    NULL);
   }
   if (gradient.empty()){
     params->gradient  = 0;
@@ -472,7 +449,7 @@ conf_err_t params_read( struct reg_params *params ){
   }
   if (translationScale.empty()){
     params->translationScale
-                      = 1.0 / 1000.0;
+                      = 0.001;
     cout << "Missing tscale, setting to default value: "
       << params->translationScale << endl;
   } else {
@@ -480,7 +457,51 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translationScale.c_str(),
                                                   NULL);
   }
-  fprintf(stderr, "hurr durr%d\n ", params->translationScale );
-  cout << "hurr durr test" << endl;
+  fclose(fp);
+  cout  << "Parameters: "           << endl;
+  cout  << "Registration method: "  << params->regmethod
+        << " Difference image: "    << params->diff_conf
+        << " Median filtering: "    << params->median
+        << " Gradient filtering: "  << params->gradient
+        << " Median radius: "       << params->radius
+        << " Gradient sigma: "      << params->sigma
+        << " Initial angle: "       << params->angle
+        << " Initial scale: "       << params->scale
+        << " Learning rate: "       << params->lrate
+        << " Minimum step length: " << params->slength
+        << " Number of iterations: "<< params->niter
+        << " numberOfLevels: "      << params->numberOfLevels
+        << " translationScale: "    << params->translationScale
+        << endl;
+
   return CONF_NO_ERR;
 }
+
+// Read config file with regex
+string getParam(string confText, string property){
+  regex_t propertyMatch;
+  int numMatch = 2;
+  regmatch_t *matchArray = (regmatch_t*)malloc(sizeof(regmatch_t)*numMatch);
+
+  char regexExpr[MAX_CHAR] = "";
+  strcat(regexExpr, property.c_str());
+  //property followed by = and a set of number or dots
+	strcat(regexExpr, "\\s*=\\s*([0-9|.]+)");
+
+	int retcode = regcomp(&propertyMatch, regexExpr, REG_EXTENDED | REG_NEWLINE | REG_PERL);
+  int match = regexec(&propertyMatch, confText.c_str(), numMatch, matchArray, 0);
+
+  string retVal;
+  if (match != 0){
+    retVal = "";
+  } else {
+    retVal = confText.substr(matchArray[1].rm_so, matchArray[1].rm_eo - matchArray[1].rm_so);
+  }
+
+	//cleanup
+	regfree(&propertyMatch);
+	free(matchArray);
+
+	return retVal;
+}
+

@@ -5,8 +5,10 @@
 // http://opensource.org/licenses/MIT
 // =========================================================================
 
+
 #ifndef REGISTRATION_H_DEFINED
 #define REGISTRATION_H_DEFINED
+
 
 #include "itkImage.h"
 
@@ -194,7 +196,7 @@ DifferenceFilterType::Pointer diffFilter(
                             ResampleFilterType::Pointer resample );
 
 // Image I/O
-GradientFilterType::Pointer gradientFilter(
+ImageType::Pointer          gradientFilter(
                             ImageType* const fixed,
                             int sigma );
 CastFilterType::Pointer     castImage(
@@ -214,19 +216,18 @@ void finalMaskParameters( TransformRigidType::Pointer transform,
                           RegistrationRigidType::Pointer registration,
                           OptimizerType::Pointer optimizer );
 
+#include "hyperspec.h"
 // Image registrations
 TransformRigidType::Pointer registration1(
                             ImageType* const fixed,
-                            ImageType* const moving );
+                            ImageType* const moving,
+                            reg_params params );
 TransformSimilarityType::Pointer registration2(
                             ImageType* const fixed,
-                            ImageType* const moving );
+                            ImageType* const moving,
+                            reg_params params );
 TransformAffineType::Pointer registration3(
                             ImageType* const fixed,
-                            ImageType* const moving );
-ResampleFilterType::Pointer registration4(
-                            ImageType* const fixed,
                             ImageType* const moving,
-                            CharImageType* const gradient );
-
+                            reg_params params );
 #endif // REGISTRATION_H_DEFINED

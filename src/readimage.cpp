@@ -19,6 +19,7 @@ int getMatch(string input_string, regmatch_t *matchArray, int matchNum, string *
 //return list of wavelengths. Input: char array containing characters {wlen1, wlen2, wlen3, ...}
 vector<float> getWavelengths(int bands, string wavelengthStr);
 
+string getValue(string hdrText, string property);
 string getBasename(string filename);
 
 hyperspectral_err_t hyperspectral_read_header(const char* filename, struct hyspex_header *header){
