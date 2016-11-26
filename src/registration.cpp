@@ -22,6 +22,9 @@ void CommandIterationUpdate::Execute(const itk::Object * object, const itk::Even
   std::cout << optimizer->GetCurrentPosition() << std::endl;
 }
 
+// ==========================
+// Functions for float images
+// ==========================
 
 // Median filter
 ImageType::Pointer medianFilter( ImageType* const fixed, int radius ){
@@ -33,11 +36,9 @@ ImageType::Pointer medianFilter( ImageType* const fixed, int radius ){
 
   median->SetRadius( 	rad );
   median->SetInput( fixed );
+  median->Update();
 
-  ImageType::Pointer output = median->GetOutput();
-  output->Update();
-
-  return output;
+  return median->GetOutput();
 }
 
 // Gradient filter
@@ -50,16 +51,6 @@ ImageType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
 
   return gradient->GetOutput();
 }
-
-// Cast float to unsigned char
-CastFilterType::Pointer castImage( ImageType* const img ){
-
-  CastFilterType::Pointer castFilter = CastFilterType::New();
-  castFilter->SetInput( img );
-
-  return castFilter;
-}
-
 
 // Initialize registration container
 RegistrationRigidType::Pointer registrationRigidContainer(
@@ -92,23 +83,6 @@ RegistrationSimilarityType::Pointer registrationSimilarityContainer(
   registration->SetOptimizer(   optimizer );
   registration->SetFixedImage(    fixed   );
   registration->SetMovingImage(   moving  );
-  return registration;
-}
-
-// Initialize registration container with mask
-RegistrationRigidType::Pointer registrationMaskContainer(
-                                      ImageType* const fixed,
-                                      ImageType* const moving,
-                                      MetricType::Pointer metric,
-                                      OptimizerType::Pointer optimizer  ){
-
-  RegistrationRigidType::Pointer  	    registration  =
-                                      RegistrationRigidType::New();
-
-  registration->SetMetric(      	metric    	);
-  registration->SetOptimizer(   	optimizer 	);
-  registration->SetFixedImage(    	fixed   	);
-  registration->SetMovingImage(   	moving  	);
   return registration;
 }
 
@@ -207,7 +181,6 @@ ResampleFilterType::Pointer resampleRigidPointer(
   resample->SetOutputOrigin(         fixed->GetOrigin()           );
   resample->SetOutputSpacing(        fixed->GetSpacing()          );
   resample->SetDefaultPixelValue(               0.0               );
-  //resample->Update();
   return resample;
 }
 
@@ -259,6 +232,255 @@ DifferenceFilterType::Pointer diffFilter(
 
   return difference;
 }
+
+// Cast unsigned short to float
+CastFilterFloatType::Pointer castFloatImage( UintImageType* const img ){
+/*
+  RescalerUintType::Pointer rescale = RescalerUintType::New();
+
+  rescale->SetInput( img );
+  rescale->SetOutputMinimum( 0 );
+  rescale->SetOutputMaximum( 65535 );
+*/
+
+  CastFilterFloatType::Pointer castFilter = CastFilterFloatType::New();
+  castFilter->SetInput( img );
+	castFilter->Update();
+
+  return castFilter;
+}
+
+// =========================
+// Functions for uint images
+// =========================
+
+// Cast float to unsigned short
+CastFilterUintType::Pointer castUintImage( ImageType* const img ){
+/*
+  RescalerFloatType::Pointer rescale = RescalerFloatType::New();
+
+  rescale->SetInput( img );
+  rescale->SetOutputMinimum( 0 );
+  rescale->SetOutputMaximum( 1 );
+*/
+  CastFilterUintType::Pointer castFilter = CastFilterUintType::New();
+  castFilter->SetInput( img );
+  castFilter->Update();
+
+  return castFilter;
+}
+
+/*
+// Median filter
+UintImageType::Pointer medianUintFilter(  UintImageType* const fixed,
+                                          int radius ){
+  MedianFilterUintType::Pointer median = MedianFilterUintType::New();
+  UintImageType::SizeType rad;
+
+  rad[0] = radius;
+  rad[1] = radius;
+
+  median->SetRadius( 	rad );
+  median->SetInput( fixed );
+
+  return median->GetOutput();
+}
+
+// Gradient filter
+UintImageType::Pointer gradientUintFilter(  UintImageType* const fixed,
+                                        int sigma ){
+  GradientFilterUintType::Pointer gradient = GradientFilterUintType::New();
+
+  gradient->SetSigma( sigma );
+  gradient->SetInput( fixed );
+  gradient->Update();
+
+  return gradient->GetOutput();
+}
+
+// Initialize registration container
+RegistrationRigidUintType::Pointer registrationRigidUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      OptimizerType::Pointer optimizer  ){
+
+  MetricUintType::Pointer             metric        = MetricUintType::New();
+  RegistrationRigidUintType::Pointer  registration  = RegistrationRigidUintType::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
+// Initialize registration container with Transform2Type
+RegistrationSimilarityUintType::Pointer registrationSimilarityUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      OptimizerType::Pointer optimizer  ){
+
+  MetricUintType::Pointer                   metric        = MetricUintType::New();
+  RegistrationSimilarityUintType::Pointer   registration  = RegistrationSimilarityUintType::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
+// Initialize registration container with TransformAffineType
+RegistrationAffineUintType::Pointer registrationAffineUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      OptimizerType::Pointer optimizer  ){
+
+  MetricUintType::Pointer               metric        = MetricUintType::New();
+  RegistrationAffineUintType::Pointer   registration  = RegistrationAffineUintType::New();
+
+  registration->SetMetric(      metric    );
+  registration->SetOptimizer(   optimizer );
+  registration->SetFixedImage(    fixed   );
+  registration->SetMovingImage(   moving  );
+  return registration;
+}
+
+// Initialize initializer container with rigid transform
+TransformRigidInitializerUintType::Pointer initializerRigidUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformRigidType::Pointer transform ){
+
+  TransformRigidInitializerUintType::Pointer initializer =
+                                      TransformRigidInitializerUintType::New();
+
+  // Initializer is now connected to the transform and to the fixed and moving images
+  initializer->SetTransform(   transform  );
+  initializer->SetFixedImage(   fixed     );
+  initializer->SetMovingImage(  moving    );
+
+  // Select center of mass mode
+  initializer->MomentsOn();
+
+  // Compute the center and translation
+  initializer->InitializeTransform();
+  return initializer;
+}
+
+// Initialize initializer container with similarity transform
+TransformSimilarityInitializerUintType::Pointer initializerSimilarityUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformSimilarityType::Pointer transform ){
+
+  TransformSimilarityInitializerUintType::Pointer initializer =
+                                      TransformSimilarityInitializerUintType::New();
+
+  // Initializer is now connected to the transform and to the fixed and moving images
+  initializer->SetTransform(   transform  );
+  initializer->SetFixedImage(   fixed     );
+  initializer->SetMovingImage(  moving    );
+
+  // Select center of mass mode
+  initializer->MomentsOn();
+
+  // Compute the center and translation
+  initializer->InitializeTransform();
+  return initializer;
+}
+
+// Initialize initializer container with similarity transform
+TransformAffineInitializerUintType::Pointer initializerAffineUintContainer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformAffineType::Pointer transform ){
+
+  TransformAffineInitializerUintType::Pointer initializer =
+                                      TransformAffineInitializerUintType::New();
+
+  // Initializer is now connected to the transform and to the fixed and moving images
+  initializer->SetTransform(   transform  );
+  initializer->SetFixedImage(   fixed     );
+  initializer->SetMovingImage(  moving    );
+
+  // Select center of mass mode
+  initializer->MomentsOn();
+
+  // Compute the center and translation
+  initializer->InitializeTransform();
+  return initializer;
+}
+
+// Resample moving image with rigid transform
+ResampleFilterUintType::Pointer resampleRigidUintPointer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformRigidType::Pointer transform ){
+  ResampleFilterUintType::Pointer resample = ResampleFilterUintType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
+  resample->SetOutputOrigin(         fixed->GetOrigin()           );
+  resample->SetOutputSpacing(        fixed->GetSpacing()          );
+  resample->SetDefaultPixelValue(               0.0               );
+  return resample;
+}
+
+// Resample moving image with similarity transform
+ResampleFilterUintType::Pointer resampleSimilarityUintPointer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformSimilarityType::Pointer transform ){
+  ResampleFilterUintType::Pointer resample = ResampleFilterUintType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetOutputDirection(     fixed->GetDirection()         );
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
+  return resample;
+}
+
+// Resample moving image with similarity transform
+ResampleFilterUintType::Pointer resampleAffineUintPointer(
+                                      UintImageType* const fixed,
+                                      UintImageType* const moving,
+                                      TransformAffineType::Pointer transform ){
+  ResampleFilterUintType::Pointer resample = ResampleFilterUintType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetOutputDirection(     fixed->GetDirection()         );
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
+  return resample;
+}
+
+// Calculate diff between image before and after registration
+DifferenceFilterUintType::Pointer diffUintFilter(
+                                      UintImageType* const moving,
+                                      ResampleFilterUintType::Pointer resample ){
+
+  DifferenceFilterUintType::Pointer difference  =  DifferenceFilterUintType::New();
+
+  difference->SetInput1(        moving         );
+  difference->SetInput2( resample->GetOutput() );
+
+  return difference;
+}
+*/
+// =============================
+// Print outputs from transforms
+// =============================
+
 
 // Print results from rigid transform
 void finalRigidParameters(
@@ -360,30 +582,4 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
   std::cout << " Scale 1         = " << svd.W(0)        << std::endl;
   std::cout << " Scale 2         = " << svd.W(1)        << std::endl;
   std::cout << " Angle (degrees) = " << angleInDegrees  << std::endl;
-}
-
-// Print results from mask transform
-void finalMaskParameters( TransformRigidType::Pointer transform,
-                          RegistrationRigidType::Pointer registration,
-                          OptimizerType::Pointer optimizer ){
-  OptimizerType::ParametersType finalParameters =
-                    transform->GetParameters();
-  const double finalAngle           = finalParameters[0];
-  const double finalRotationCenterX = finalParameters[1];
-  const double finalRotationCenterY = finalParameters[2];
-  const double finalTranslationX    = finalParameters[3];
-  const double finalTranslationY    = finalParameters[4];
-  const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
-  const double bestValue = optimizer->GetValue();
-  const double finalAngleInDegrees = finalAngle * 45.0 / std::atan(1.0);
-
-  std::cout << "Result = " << std::endl;
-  std::cout << " Angle (radians) " << finalAngle  << std::endl;
-  std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
-  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
-  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
-  std::cout << " Translation X = " << finalTranslationX  << std::endl;
-  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
-  std::cout << " Iterations    = " << numberOfIterations << std::endl;
-  std::cout << " Metric value  = " << bestValue          << std::endl;
 }

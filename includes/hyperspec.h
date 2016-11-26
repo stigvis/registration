@@ -21,8 +21,14 @@
 struct reg_params {
   // Registration method
   int regmethod;
+  // Registration output name
+  std::string reg_name;
+  //const char* reg_name;
   // Output from diff
   int diff_conf;
+  // Diff output name
+  std::string diff_name;
+  //const char* diff_name;
   // Median filter
   int median;
   // Level of median filtering

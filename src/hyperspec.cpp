@@ -75,7 +75,7 @@ void hyperspec_img(const char *filename){
   // Filter image
   ffixed = fixed;
   if (params.median == 1){
-    ffixed = medianFilter( ffixed, params.sigma );
+    ffixed = medianFilter( ffixed, params.radius );
     ffixed->Update();
   }
   if (params.gradient == 1){
@@ -93,7 +93,7 @@ void hyperspec_img(const char *filename){
     // Filter images
     fmoving = moving;
     if ( params.median == 1){
-      fmoving = medianFilter( fmoving, params.sigma );
+      fmoving = medianFilter( fmoving, params.radius );
       fmoving->Update();
     }
     if ( params.gradient == 1){
@@ -141,6 +141,7 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
+      // TODO: Demons transform
     }
 
     // Add to output containers
@@ -161,15 +162,15 @@ void hyperspec_img(const char *filename){
   }
   // Write to .img container
   // See readimage.h
-  hyperspectral_write_header( "test_out", header.bands,
+  hyperspectral_write_header( params.reg_name.c_str(), header.bands,
     header.samples, header.lines, header.wlens );
-  hyperspectral_write_image( "test_out", header.bands,
+  hyperspectral_write_image( params.reg_name.c_str(), header.bands,
     header.samples, header.lines, out );
 
   if ( params.diff_conf == 1){
-    hyperspectral_write_header( "test_diff", header.bands,
+    hyperspectral_write_header( params.diff_name.c_str(), header.bands,
       header.samples, header.lines, header.wlens );
-    hyperspectral_write_image( "test_diff", header.bands,
+    hyperspectral_write_image( params.diff_name.c_str(), header.bands,
       header.samples, header.lines, diff );
   }
 
@@ -340,7 +341,9 @@ conf_err_t params_read( struct reg_params *params ){
 
   // Extract parameters from config
   string regmethod  = getParam(confText, "regmethod");
+  string reg_name   = getParam(confText, "reg_name" );
   string diff_conf  = getParam(confText, "diff_conf");
+  string diff_name  = getParam(confText, "diff_name");
   string median     = getParam(confText, "median"   );
   string radius     = getParam(confText, "radius"   );
   string gradient   = getParam(confText, "gradient" );
@@ -361,11 +364,17 @@ conf_err_t params_read( struct reg_params *params ){
   // Set default values for missing strings
   if (regmethod == "" ){
     params->regmethod = 1;
-    fprintf(stderr, "Missing regmethod, setting to default value: %d\n", params->regmethod);
     cout << "Missing regmethod, setting to default value: "
       << params->regmethod << endl;
   } else {
     params->regmethod = strtod(regmethod.c_str(), NULL);
+  }
+  if (reg_name == "" ){
+    params->reg_name = "out";
+    cout << "Missing reg_name, setting to default value: "
+      << params->reg_name << endl;
+  } else {
+    params->reg_name = reg_name;//.c_str();
   }
   if (diff_conf == ""){
     params->diff_conf = 1;
@@ -373,6 +382,13 @@ conf_err_t params_read( struct reg_params *params ){
       << params->diff_conf << endl;
   } else {
     params->diff_conf = strtod(diff_conf.c_str(), NULL);
+  }
+  if (diff_name == "" ){
+    params->diff_name = "diffout";
+    cout << "Missing diff_name, setting to default value: "
+      << params->regmethod << endl;
+  } else {
+    params->diff_name = diff_name;//.c_str();
   }
   if (median.empty()){
     params->median    = 1;
@@ -460,7 +476,9 @@ conf_err_t params_read( struct reg_params *params ){
   fclose(fp);
   cout  << "Parameters: "           << endl;
   cout  << "Registration method: "  << params->regmethod
+        << " Registration name: "   << params->reg_name
         << " Difference image: "    << params->diff_conf
+        << " Difference name: "     << params->diff_name
         << " Median filtering: "    << params->median
         << " Gradient filtering: "  << params->gradient
         << " Median radius: "       << params->radius
@@ -486,9 +504,9 @@ string getParam(string confText, string property){
   char regexExpr[MAX_CHAR] = "";
   strcat(regexExpr, property.c_str());
   //property followed by = and a set of number or dots
-	strcat(regexExpr, "\\s*=\\s*([0-9|.]+)");
+  strcat(regexExpr, "\\s*=\\s*([0-9|.|a-z|\"|]+)");
 
-	int retcode = regcomp(&propertyMatch, regexExpr, REG_EXTENDED | REG_NEWLINE | REG_PERL);
+  int retcode = regcomp(&propertyMatch, regexExpr, REG_EXTENDED | REG_NEWLINE | REG_PERL);
   int match = regexec(&propertyMatch, confText.c_str(), numMatch, matchArray, 0);
 
   string retVal;
@@ -498,10 +516,10 @@ string getParam(string confText, string property){
     retVal = confText.substr(matchArray[1].rm_so, matchArray[1].rm_eo - matchArray[1].rm_so);
   }
 
-	//cleanup
-	regfree(&propertyMatch);
-	free(matchArray);
+  //cleanup
+  regfree(&propertyMatch);
+  free(matchArray);
 
-	return retVal;
+  return retVal;
 }
 
