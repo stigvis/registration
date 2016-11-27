@@ -31,7 +31,7 @@ UintImageType::Pointer  readRaw(
                     int i,
                     int xsize,
                     int ysize,
-                    char *argv[] );
+                    char *argv );
 
 // Write images from itk container to raw format
 void                    writeRaw(
@@ -39,7 +39,7 @@ void                    writeRaw(
                     int i,
                     int xsize,
                     int ysize,
-                    reg_params params );
+                    std::string name );
 
 
 

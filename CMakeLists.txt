@@ -15,4 +15,4 @@ add_executable(hyperspec_registration
                 src/rigid.cpp
                 src/similarity.cpp
                 src/affine.cpp )
-target_link_libraries(hyperspec_registration boost_regex matio tiff ${ITK_LIBRARIES})
+target_link_libraries(hyperspec_registration boost_regex matio ${ITK_LIBRARIES})

@@ -29,8 +29,8 @@ void multispec_raw( int argc, char *argv[] ){
   int ysize = 768;
 
   // Input images
-  ImageType::Pointer fixed            = imgContainer( xsize, ysize );
   UintImageType::Pointer fixed_raw    = rawContainer( xsize, ysize );
+  ImageType::Pointer fixed            = imgContainer( xsize, ysize );
   ImageType::Pointer moving           = imgContainer( xsize, ysize );
   UintImageType::Pointer moving_raw   = rawContainer( xsize, ysize );
   // Filtered images
@@ -52,23 +52,15 @@ void multispec_raw( int argc, char *argv[] ){
   TransformAffineType::Pointer      affine_transform;
 
   // Read fixed image
-  // Open images
-  fixed_raw = readRaw(fixed_raw, argc/2, xsize, ysize, argv );
+  fixed_raw = readRaw(fixed_raw, 1, xsize, ysize, argv[1]);
+  //Write out with specified naming scheme
+  writeRaw( fixed_raw, 1, xsize, ysize, params.reg_name );
 
-  UintWriterType::Pointer writer1 = UintWriterType::New();
-  writer1->SetFileName("3.tif");
-  writer1->SetInput(fixed_raw);
-  writer1->Update();
 
   // Cast to float
   CastFilterFloatType::Pointer fixed_cast_in = castFloatImage( fixed_raw );
   fixed = fixed_cast_in->GetOutput();
   fixed->Update();
-
-  WriterType::Pointer writer = WriterType::New();
-  writer->SetFileName("2.tif");
-  writer->SetInput(fixed);
-  writer->Update();
 
   // Filter images
   ffixed = fixed;
@@ -81,15 +73,16 @@ void multispec_raw( int argc, char *argv[] ){
     ffixed->Update();
   }
 
-  for ( int i=1; i<argc; i++){
+  for ( int i=2; i<argc; i++){
 
+    char buffer[32];
+    snprintf(buffer, sizeof(char) * 32, "1%i.tif", i);
     // Read moving images
-    moving_raw = readRaw(moving_raw, i, xsize, ysize, argv );
+    moving_raw = readRaw(moving_raw, i, xsize, ysize, argv[i] );
 
     // Cast to float
     CastFilterFloatType::Pointer moving_cast_in = castFloatImage( moving_raw );
     moving = moving_cast_in->GetOutput();
-    //moving->Update();
 
     // Filter images
     fmoving = moving;
@@ -145,33 +138,23 @@ void multispec_raw( int argc, char *argv[] ){
     }
 
     // Add to output containers
-    //output = registration->GetOutput();
-    //output->Update();
+    output = registration->GetOutput();
+    output->Update();
 
     outdiff = difference->GetOutput();
     outdiff->Update();
 
     // Write images
-    CastFilterUintType::Pointer moving_cast_out = castUintImage ( registration->GetOutput() );
+    CastFilterUintType::Pointer moving_cast_out = castUintImage ( output );
     output_raw = moving_cast_out->GetOutput();
-    /*try {
-      output_raw->Update();
-    }
-    catch( itk::ExceptionObject & err ){
-      cerr << "ExceptionObject caught !" << endl;
-      cerr << err << endl;
-      exit(1);
-    }
-    output_raw->Update();
-*/
-    writeRaw( output_raw, i, xsize, ysize, params );
+    writeRaw( output_raw, i, xsize, ysize, params.reg_name );
 
     // Write diff
     if ( params.diff_conf == 4 ){
       CastFilterUintType::Pointer diff_cast_out = castUintImage ( outdiff );
       outdiff_raw = diff_cast_out->GetOutput();
       outdiff_raw->Update();
-      writeRaw( outdiff_raw, i, xsize, ysize, params );
+      writeRaw( outdiff_raw, i, xsize, ysize, params.diff_name );
     }
 
     cout << "Done with " << i << " of " << argc-1 << endl;
@@ -228,16 +211,18 @@ ImageType::Pointer imgContainer(
 }
 
 // Reading to itk image container
-UintImageType::Pointer readRaw( UintImageType* itkraw,
+UintImageType::Pointer readRaw( UintImageType* const itkraw,
                                 int i,
                                 int xsize,
                                 int ysize,
-                                char *argv[] ){
+                                char *argv ){
+
+  cout << "In: " << argv << endl;
+
   // Open images
-  FILE *fid = fopen(argv[i], "rb");
-  uint16_t *img_data = new uint16_t[xsize*ysize]();
-  int read_bytes = fread(img_data, sizeof(uint16_t), xsize*ysize, fid);
-  fclose( fid );
+  FILE *fid = fopen(argv, "rb");
+  unsigned short *in_data = new unsigned short[xsize*ysize]();
+  int read_bytes = fread(in_data, sizeof(uint16_t), xsize*ysize, fid);
 
   // One pixel at a time
   for ( int j=0; j<ysize; j++){
@@ -245,13 +230,12 @@ UintImageType::Pointer readRaw( UintImageType* itkraw,
       UintImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
       pixelIndex[1] = j;
-      itkraw->SetPixel(pixelIndex, img_data[xsize*ysize*(i-1) + xsize*j + k]);
-      //cout << img_data[xsize*ysize*(i-1) + xsize*j + k] << endl;
+      itkraw->SetPixel(pixelIndex, in_data[xsize*j + k]);
     }
   }
 
-  cout << argv[i] << endl;
-  cout << itkraw << endl;
+  fclose( fid );
+  delete [] in_data;
   return itkraw;
 }
 
@@ -260,29 +244,31 @@ void writeRaw(  UintImageType* itkimg,
                 int i,
                 int xsize,
                 int ysize,
-                reg_params params ){
-/*
+                string name ){
+
+  // Recursive names
+  name += to_string(i);
+  name += ".raw";
+
   // Prepare
-  char buffer[32];
-  snprintf(buffer, sizeof(char) * 32, "%d%d.raw", params.reg_name, i-1);
-  FILE *fid = fopen(buffer, "wb");
-  uint16_t *out_data = new uint16_t[xsize*ysize]();
-*/
+  fstream fid (name.c_str(), ios::out | ios::binary);
+  unsigned short *out_data = new unsigned short[xsize*ysize]();
+  size_t size = sizeof(unsigned short) * (xsize*ysize);
+
   // One pixel at a time
   for ( int j=0; j<ysize; j++){
     for ( int k=0; k<xsize; k++){
       UintImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
-      pixelIndex[0] = j;
-      cout << j << endl;
-      cout << k << endl;
-      //out_data[xsize*ysize*(i-1) + xsize*j + k] =
-      cout << itkimg->GetPixel(pixelIndex) << endl;
+      pixelIndex[1] = j;
+      out_data[xsize*j + k] = itkimg->GetPixel(pixelIndex);
     }
   }
 
+  cout << "Out: " << name << endl;
   // Write
- // fclose(fid);
-  cout << "1" << endl;
-
+  fid.write (reinterpret_cast<char*>(out_data), size);
+  // Clean
+  delete [] out_data;
+  fid.close();
 }
