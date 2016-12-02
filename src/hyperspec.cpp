@@ -207,52 +207,25 @@ void hyperspec_mat(const char *filename){
   //Wavelengths
   unsigned nWave = wavelengthsd->dims[1];
   static double *wData = static_cast<double*>(wavelengthsd->data);
-  short unsigned *hData = static_cast<uint16_t*>(HSId->data);
+  float *hData = static_cast<float*>(HSId->data);
   cout << "Number of images: " << nSize << ", Image dimensions: " << xSize << "x" << ySize << ", Wavelengths: " ;
   for (int i=0; i<nWave-1; i++){
     cout << wData[i] << ", ";
   }
   cout << wData[nWave-1] << " Array size: " << HSId->nbytes/HSId->data_size << " Compression: " << HSId->compression << " Data type: " << HSId->data_type << endl;
 
-  // Write to tiff
 
-  uint16_t* linebuffer;
+  // Declare ITK pointers
+  ImageType::Pointer fixed  = ImageType::New();
+  ImageType::Pointer moving = ImageType::New();
 
-  for (int im=0; im<HSId->dims[2]; im++) {
-    char buffer[32]; // The filename buffer.
-    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im);
-    TIFF *out = TIFFOpen(buffer, "w");
-    TIFFSetField(out, TIFFTAG_IMAGEWIDTH, xSize);
-    TIFFSetField(out, TIFFTAG_IMAGELENGTH, ySize);
-    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, 1);    // set the size of the channels
-    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
-    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT); // Not float point images
-    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);
-    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+  // Read fixed
+  fixed = readMat(fixed, nSize/2, xSize, ySize, hData);
 
-    // Allocate memory
-    uint16_t* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
 
-    if (tmp != NULL) {
-      linebuffer = tmp;
-    } else {
-      cout << "Error allocating memory." << endl ;
-    }
-
-    linebuffer[0]=0;
-    for (int i=0; i < ySize; i++) {
-      for (int j=0; j < xSize; j++) {
-        linebuffer[j] = hData[j + xSize*i + xSize*ySize*im];
-      }
-      TIFFWriteScanline(out, linebuffer, i);
-    }
-    _TIFFfree(linebuffer);
-    TIFFClose(out);
+  for (int im=0; im<nSize; im++){
+    moving = readMat(moving, im, xSize, ySize, hData);
   }
-
   // Cleanup
   Mat_VarFree(wavelengthsi);
   Mat_VarFree(wavelengthsd);
@@ -523,3 +496,58 @@ string getParam(string confText, string property){
   return retVal;
 }
 
+ImageType::Pointer readMat( ImageType* const itkmat,
+                                int i,
+                                unsigned xSize,
+                                unsigned ySize,
+                                float *hData ){
+  for (int j=0; j < ySize; j++) {
+    for (int k=0; k < xSize; k++) {
+      UintImageType::IndexType pixelIndex;
+      pixelIndex[0] = k;
+      pixelIndex[1] = j;
+      itkmat->SetPixel(pixelIndex, hData[j + xSize*i + xSize*ySize*i]);
+    }
+  }
+  return itkmat;
+}
+  /* Mat write, deprecated
+  // Write to tiff
+
+  uint16_t* linebuffer;
+
+  for (int im=0; im<HSId->dims[2]; im++) {
+    char buffer[32]; // The filename buffer.
+    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im);
+    TIFF *out = TIFFOpen(buffer, "w");
+    TIFFSetField(out, TIFFTAG_IMAGEWIDTH, xSize);
+    TIFFSetField(out, TIFFTAG_IMAGELENGTH, ySize);
+    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
+    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, 1);    // set the size of the channels
+    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
+    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT); // Not float point images
+    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);
+    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+
+    // Allocate memory
+    uint16_t* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
+
+    if (tmp != NULL) {
+      linebuffer = tmp;
+    } else {
+      cout << "Error allocating memory." << endl ;
+    }
+
+    linebuffer[0]=0;
+    for (int i=0; i < ySize; i++) {
+      for (int j=0; j < xSize; j++) {
+        linebuffer[j] = hData[j + xSize*i + xSize*ySize*im];
+      }
+      TIFFWriteScanline(out, linebuffer, i);
+    }
+    _TIFFfree(linebuffer);
+    TIFFClose(out);
+  }
+*/

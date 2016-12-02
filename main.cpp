@@ -16,17 +16,17 @@ using namespace std;
 
 int main(int argc, char *argv[]){
 
-	if (argc < 2) {
-		cerr << "Usage: " << argv[0] << " hyperspectral_image_path" << endl;
-		exit(1);
-	}
+  if (argc < 2) {
+    cerr << "Usage: " << argv[0] << " hyperspectral_image_path" << endl;
+    exit(1);
+  }
 
-	char *filename = argv[1];
+  char *filename = argv[1];
 
   // File format recognition and run correct function
   if (strstr(filename, "raw") ){
     // File is .raw
-    multispec_raw( argc, argv ); 
+    multispec_raw( argc, argv );
   } else if (strstr(filename, "img") ){
     // File is .img
     hyperspec_img(filename);

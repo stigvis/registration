@@ -21,3 +21,6 @@ image for image registration. Currently supports raw file format of size 1024x76
 src/multispec.cpp as necessary.
 
 ./registration ~/sample1.raw ~/sample2.raw .. ~/sample99.raw
+
+Note: The registration process does not support uint16_t, which is the stored format of the raw images. Thus, these
+are cast to float for registration, and cast back before storing.

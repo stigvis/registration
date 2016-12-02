@@ -5,11 +5,10 @@
 // http://opensource.org/licenses/MIT
 // =========================================================================
 
-
 #ifndef REGISTRATION_H_DEFINED
 #define REGISTRATION_H_DEFINED
 
-
+// Insight Toolkit
 #include "itkImage.h"
 
 // Image registration
@@ -232,53 +231,7 @@ ResampleFilterType::Pointer resampleAffinePointer(
 DifferenceFilterType::Pointer diffFilter(
                             ImageType* const moving,
                             ResampleFilterType::Pointer resample );
-/*
-// Generic handlers, uint
-RegistrationRigidType::Pointer registrationRigidContainer(
-                            ImageType* const fixed,
-                            ImageType* const moving,
-                            OptimizerType::Pointer optimizer );
-RegistrationSimilarityUintType::Pointer registrationSimilarityUintContainer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            OptimizerType::Pointer optimizer );
-RegistrationAffineUintType::Pointer registrationAffineUintContainer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            OptimizerType::Pointer optimizer );
-RegistrationRigidType::Pointer registrationMaskContainer(
-                            ImageType* const fixed,
-                            ImageType* const moving,
-                            MetricType::Pointer metric,
-                            OptimizerType::Pointer optimizer );
-TransformRigidInitializerUintType::Pointer initializerRigidUintContainer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformRigidType::Pointer transform );
-TransformSimilarityInitializerUintType::Pointer initializerSimilarityUintContainer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformSimilarityType::Pointer transform );
-TransformAffineInitializerUintType::Pointer initializerAffineUintContainer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformAffineType::Pointer transform );
-ResampleFilterUintType::Pointer resampleRigidUintPointer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformRigidType::Pointer transform );
-ResampleFilterUintType::Pointer resampleSimilarityUintPointer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformSimilarityType::Pointer transform );
-ResampleFilterUintType::Pointer resampleAffineUintPointer(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            TransformAffineType::Pointer transform );
-DifferenceFilterUintType::Pointer diffUintFilter(
-                            UintImageType* const moving,
-                            ResampleFilterType::Pointer resample );
-*/
+
 // Image I/O, float
 ImageType::Pointer            gradientFilter(
                               ImageType* const fixed,

@@ -89,4 +89,9 @@ float* writeITK(            ImageType* const itkimg,
                             float *image,
                             int i,
                             struct hyspex_header header );
+ImageType::Pointer readMat( ImageType* const itkmat,
+                            int i,
+                            unsigned xSize,
+                            unsigned ySize,
+                            float *hData );
 #endif // HYPERSPEC_READ_H_DEFINED
