@@ -30,16 +30,16 @@ void multispec_raw( int argc, char *argv[] ){
 
   // Input images
   UintImageType::Pointer fixed_raw    = rawContainer( xsize, ysize );
+  UintImageType::Pointer moving_raw   = rawContainer( xsize, ysize );
   ImageType::Pointer fixed            = imgContainer( xsize, ysize );
   ImageType::Pointer moving           = imgContainer( xsize, ysize );
-  UintImageType::Pointer moving_raw   = rawContainer( xsize, ysize );
   // Filtered images
   ImageType::Pointer ffixed           = imgContainer( xsize, ysize );
   ImageType::Pointer fmoving          = imgContainer( xsize, ysize );
   // Output images
   ImageType::Pointer output           = imgContainer( xsize, ysize );
-  UintImageType::Pointer output_raw   = rawContainer( xsize, ysize );
   ImageType::Pointer outdiff          = imgContainer( xsize, ysize );
+  UintImageType::Pointer output_raw   = rawContainer( xsize, ysize );
   UintImageType::Pointer outdiff_raw  = rawContainer( xsize, ysize );
 
   // Difference image
@@ -47,9 +47,6 @@ void multispec_raw( int argc, char *argv[] ){
 
   // Initiate pointers
   ResampleFilterType::Pointer       registration;
-  TransformRigidType::Pointer       rigid_transform;
-  TransformSimilarityType::Pointer  similarity_transform;
-  TransformAffineType::Pointer      affine_transform;
 
   // Read fixed image
   fixed_raw = readRaw(fixed_raw, 1, xsize, ysize, argv[1]);
@@ -65,8 +62,8 @@ void multispec_raw( int argc, char *argv[] ){
   // Filter images
   ffixed = fixed;
   if ( params.median == 1){
-    fmoving = medianFilter( ffixed, params.radius );
-    fmoving->Update();
+    ffixed = medianFilter( ffixed, params.radius );
+    ffixed->Update();
   }
   if ( params.gradient == 1){
     ffixed = gradientFilter( ffixed, params.sigma );
@@ -98,6 +95,7 @@ void multispec_raw( int argc, char *argv[] ){
     // Throw to registration handler
     // Rigid transform
     if (params.regmethod == 1){
+      TransformRigidType::Pointer       rigid_transform;
       rigid_transform = registration1(
                                   ffixed,
                                   fmoving,
@@ -111,6 +109,7 @@ void multispec_raw( int argc, char *argv[] ){
                                   registration );
       // Similarity transform
     } else if (params.regmethod == 2){
+      TransformSimilarityType::Pointer  similarity_transform;
       similarity_transform = registration2(
                                   ffixed,
                                   fmoving,
@@ -124,6 +123,7 @@ void multispec_raw( int argc, char *argv[] ){
                                   registration );
       // Affine transform
     } else if (params.regmethod == 3){
+      TransformAffineType::Pointer      affine_transform;
       affine_transform = registration3(
                                   ffixed,
                                   fmoving,
@@ -132,6 +132,19 @@ void multispec_raw( int argc, char *argv[] ){
                                   fixed,
                                   moving,
                                   affine_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+    } else if (params.regmethod == 4){
+      TransformBSplineType::Pointer      bspline_transform;
+      bspline_transform = registration4(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleBSplinePointer(
+                                  fixed,
+                                  moving,
+                                  bspline_transform );
       difference = diffFilter(
                                   moving,
                                   registration );

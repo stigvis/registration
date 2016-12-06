@@ -85,7 +85,9 @@ TransformSimilarityType::Pointer registration2(
                                         transform );
 
   // Print results
-  finalSimilarityParameters(transform, optimizer );
+  if ( params.output == 1 ){
+    finalSimilarityParameters(transform, optimizer );
+  }
 
   return transform;
 

@@ -83,7 +83,9 @@ TransformAffineType::Pointer registration3(
                                         transform );
 
   // Print results
-  finalAffineParameters(transform, optimizer );
+  if ( params.output == 1 ){
+    finalAffineParameters(transform, optimizer );
+  }
 
   return transform;
 

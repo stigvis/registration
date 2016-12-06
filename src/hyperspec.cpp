@@ -7,7 +7,6 @@
 
 #include "readimage.h"
 #include "registration.h"
-#include "tiffio.h"
 #include "matio.h"
 #include "hyperspec.h"
 using namespace std;
@@ -61,12 +60,8 @@ void hyperspec_img(const char *filename){
   ImageType::Pointer outdiff   = imageContainer(header);
   // Difference image
   DifferenceFilterType::Pointer difference = DifferenceFilterType::New();
-
-  // Initiate pointers
+  // Resample image
   ResampleFilterType::Pointer       registration;
-  TransformRigidType::Pointer       rigid_transform;
-  TransformSimilarityType::Pointer  similarity_transform;
-  TransformAffineType::Pointer      affine_transform;
 
   // Read fixed image
   int i = header.bands / 2;
@@ -90,6 +85,12 @@ void hyperspec_img(const char *filename){
     // Read moving image
     moving = readITK( moving, img, i, header );
 
+    // Skip center band (fixed)
+    if ( i == header.bands/2 ){
+      out = writeITK( moving, out, i, header );
+      continue;
+    }
+    
     // Filter images
     fmoving = moving;
     if ( params.median == 1){
@@ -104,6 +105,7 @@ void hyperspec_img(const char *filename){
     // Throw to registration handler
     // Rigid transform
     if (params.regmethod == 1){
+      TransformRigidType::Pointer       rigid_transform;
       rigid_transform = registration1(
                                   ffixed,
                                   fmoving,
@@ -117,6 +119,7 @@ void hyperspec_img(const char *filename){
                                   registration );
       // Similarity transform
     } else if (params.regmethod == 2){
+      TransformSimilarityType::Pointer  similarity_transform;
       similarity_transform = registration2(
                                   ffixed,
                                   fmoving,
@@ -130,6 +133,7 @@ void hyperspec_img(const char *filename){
                                   registration );
       // Affine transform
     } else if (params.regmethod == 3){
+      TransformAffineType::Pointer      affine_transform;
       affine_transform = registration3(
                                   ffixed,
                                   fmoving,
@@ -141,9 +145,21 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
-      // TODO: Demons transform
+      // BSpline transform
+    } else if (params.regmethod == 4){
+      TransformBSplineType::Pointer      bspline_transform;
+      bspline_transform = registration4(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleBSplinePointer(
+                                  fixed,
+                                  moving,
+                                  bspline_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
     }
-
     // Add to output containers
     output = registration->GetOutput();
     output->Update();
@@ -182,6 +198,11 @@ void hyperspec_img(const char *filename){
 }
 
 void hyperspec_mat(const char *filename){
+
+  // Read parameters config
+  struct reg_params params;
+  conf_err_t reg_errcode = params_read( &params );
+
   // Function for handling .mat
   // Read mat pointer
   mat_t *matfp;
@@ -208,24 +229,156 @@ void hyperspec_mat(const char *filename){
   unsigned nWave = wavelengthsd->dims[1];
   static double *wData = static_cast<double*>(wavelengthsd->data);
   float *hData = static_cast<float*>(HSId->data);
-  cout << "Number of images: " << nSize << ", Image dimensions: " << xSize << "x" << ySize << ", Wavelengths: " ;
+  cout  << "Number of images: "
+        << nSize
+        << ", Image dimensions: "
+        << xSize
+        << "x"
+        << ySize
+        << ", Wavelengths: " ;
   for (int i=0; i<nWave-1; i++){
-    cout << wData[i] << ", ";
+    cout
+        << wData[i]
+        << ", ";
   }
-  cout << wData[nWave-1] << " Array size: " << HSId->nbytes/HSId->data_size << " Compression: " << HSId->compression << " Data type: " << HSId->data_type << endl;
+  cout  << wData[nWave-1]
+        << " Array size: "
+        << HSId->nbytes/HSId->data_size
+        << " Compression: "
+        << HSId->compression
+        << " Data type: "
+        << HSId->data_type
+        << endl;
 
 
   // Declare ITK pointers
-  ImageType::Pointer fixed  = ImageType::New();
-  ImageType::Pointer moving = ImageType::New();
+  ImageType::Pointer fixed    = imageMatContainer( xSize, ySize );
+  ImageType::Pointer ffixed   = imageMatContainer( xSize, ySize );
+  ImageType::Pointer moving   = imageMatContainer( xSize, ySize );
+  ImageType::Pointer fmoving  = imageMatContainer( xSize, ySize );
+  ImageType::Pointer output   = imageMatContainer( xSize, ySize );
+  ImageType::Pointer outdiff  = imageMatContainer( xSize, ySize );
+  // Difference image
+  DifferenceFilterType::Pointer difference = DifferenceFilterType::New();
+  // Resample image
+  ResampleFilterType::Pointer       registration;
 
   // Read fixed
   fixed = readMat(fixed, nSize/2, xSize, ySize, hData);
 
-
-  for (int im=0; im<nSize; im++){
-    moving = readMat(moving, im, xSize, ySize, hData);
+  // Filter image
+  ffixed = fixed;
+  if (params.median == 1){
+    ffixed = medianFilter( ffixed, params.radius );
+    ffixed->Update();
   }
+  if (params.gradient == 1){
+    ffixed = gradientFilter( ffixed, params.sigma );
+    ffixed->Update();
+  }
+
+
+  float *out  = new float[xSize*ySize*nSize]();
+  float *diff = new float[xSize*ySize*nSize]();
+  for (int i=0; i<nSize; i++){
+
+    // Read moving
+    moving = readMat(moving, i, xSize, ySize, hData);
+
+    // Skip center band (fixed)
+    if ( i == nSize/2 ){
+      out = writeMat( moving, i, xSize, ySize, out );
+      continue;
+    }
+    
+    // Filter images
+    fmoving = moving;
+    if ( params.median == 1){
+      fmoving = medianFilter( fmoving, params.radius );
+      fmoving->Update();
+    }
+    if ( params.gradient == 1){
+      fmoving = gradientFilter( fmoving, params.sigma );
+      fmoving->Update();
+    }
+
+    // Throw to registration handler
+    // Rigid transform
+    if (params.regmethod == 1){
+      TransformRigidType::Pointer       rigid_transform;
+      rigid_transform = registration1(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleRigidPointer(
+                                  fixed,
+                                  moving,
+                                  rigid_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+      // Similarity transform
+    } else if (params.regmethod == 2){
+      TransformSimilarityType::Pointer  similarity_transform;
+      similarity_transform = registration2(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleSimilarityPointer(
+                                  fixed,
+                                  moving,
+                                  similarity_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+      // Affine transform
+    } else if (params.regmethod == 3){
+      TransformAffineType::Pointer      affine_transform;
+      affine_transform = registration3(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleAffinePointer(
+                                  fixed,
+                                  moving,
+                                  affine_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+      // BSpline transform
+    } else if (params.regmethod == 4){
+      TransformBSplineType::Pointer      bspline_transform;
+      bspline_transform = registration4(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+      registration = resampleBSplinePointer(
+                                  fixed,
+                                  moving,
+                                  bspline_transform );
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+    }
+    // Add to output containers
+    output = registration->GetOutput();
+    output->Update();
+
+    outdiff = difference->GetOutput();
+    outdiff->Update();
+
+    // Update output array(s)
+    out = writeMat( output, i, xSize, ySize, out );
+    if ( params.diff_conf == 1){
+      diff = writeMat( output, i, xSize, ySize, diff );
+    }
+
+    cout << "Done with " << i + 1 << " of " << nSize << endl;
+
+  }
+
+  // Write to .mat container
+
   // Cleanup
   Mat_VarFree(wavelengthsi);
   Mat_VarFree(wavelengthsd);
@@ -330,6 +483,7 @@ conf_err_t params_read( struct reg_params *params ){
                     = getParam(confText, "numoflev" );
   string translationScale
                     = getParam(confText, "tscale"   );
+  string output     = getParam(confText, "output"   );
 
   cout << "Reading parameters from params.conf" << endl;
 
@@ -446,6 +600,14 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translationScale.c_str(),
                                                   NULL);
   }
+  if (output.empty()){
+    params->output    = 1;
+    cout << "Missing output, setting to default value: "
+      << params->output << endl;
+  } else {
+    params->output    = strtod(output.c_str(),    NULL);
+  }
+
   fclose(fp);
   cout  << "Parameters: "           << endl;
   cout  << "Registration method: "  << params->regmethod
@@ -463,6 +625,7 @@ conf_err_t params_read( struct reg_params *params ){
         << " Number of iterations: "<< params->niter
         << " numberOfLevels: "      << params->numberOfLevels
         << " translationScale: "    << params->translationScale
+        << " output: "              << params->output
         << endl;
 
   return CONF_NO_ERR;
@@ -496,6 +659,29 @@ string getParam(string confText, string property){
   return retVal;
 }
 
+// Initiate image container
+ImageType::Pointer imageMatContainer(
+                                unsigned xSize,
+                                unsigned ySize ){
+  ImageType::RegionType region;
+  ImageType::IndexType start;
+
+  start[0] = 0;
+  start[1] = 0;
+
+  ImageType::SizeType size;
+  size[0] = xSize;
+  size[1] = ySize;
+
+  region.SetSize(size);
+  region.SetIndex(start);
+
+  ImageType::Pointer container = ImageType::New();
+  container->SetRegions(region);
+  container->Allocate();
+  return container;
+}
+
 ImageType::Pointer readMat( ImageType* const itkmat,
                                 int i,
                                 unsigned xSize,
@@ -511,43 +697,12 @@ ImageType::Pointer readMat( ImageType* const itkmat,
   }
   return itkmat;
 }
-  /* Mat write, deprecated
-  // Write to tiff
 
-  uint16_t* linebuffer;
+float* writeMat(            ImageType* const itkmat,
+                            int i,
+                            unsigned xSize,
+                            unsigned ySize,
+                            float *hData ){
 
-  for (int im=0; im<HSId->dims[2]; im++) {
-    char buffer[32]; // The filename buffer.
-    snprintf(buffer, sizeof(char) * 32, "file%i.tif", im);
-    TIFF *out = TIFFOpen(buffer, "w");
-    TIFFSetField(out, TIFFTAG_IMAGEWIDTH, xSize);
-    TIFFSetField(out, TIFFTAG_IMAGELENGTH, ySize);
-    TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-    TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, 1);    // set the size of the channels
-    TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
-    TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-    TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(out, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT); // Not float point images
-    TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);
-    TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+}
 
-    // Allocate memory
-    uint16_t* tmp=(uint16_t*)_TIFFmalloc(xSize*ySize);
-
-    if (tmp != NULL) {
-      linebuffer = tmp;
-    } else {
-      cout << "Error allocating memory." << endl ;
-    }
-
-    linebuffer[0]=0;
-    for (int i=0; i < ySize; i++) {
-      for (int j=0; j < xSize; j++) {
-        linebuffer[j] = hData[j + xSize*i + xSize*ySize*im];
-      }
-      TIFFWriteScanline(out, linebuffer, i);
-    }
-    _TIFFfree(linebuffer);
-    TIFFClose(out);
-  }
-*/

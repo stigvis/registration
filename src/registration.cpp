@@ -8,18 +8,22 @@
 #include "registration.h"
 
 // Keeping track of the iterations
-void CommandIterationUpdate::Execute(itk::Object *caller, const itk::EventObject & event){ // ITK_OVERRIDE{
+void CommandIterationUpdate::Execute(itk::Object *caller, const itk::EventObject & event){
   Execute( (const itk::Object *)caller, event);
 }
 
-void CommandIterationUpdate::Execute(const itk::Object * object, const itk::EventObject & event){ // ITK_OVERRIDE{
+void CommandIterationUpdate::Execute(const itk::Object * object, const itk::EventObject & event){
   OptimizerPointer optimizer = static_cast< OptimizerPointer >( object );
   if( ! itk::IterationEvent().CheckEvent( &event ) ){
     return;
   }
+
+  /* Uncomment for live feedback from the iterations
   std::cout << optimizer->GetCurrentIteration() << "   ";
   std::cout << optimizer->GetValue() << "   ";
   std::cout << optimizer->GetCurrentPosition() << std::endl;
+  }
+  */
 }
 
 // ==========================
@@ -51,6 +55,8 @@ ImageType::Pointer gradientFilter( ImageType* const fixed, int sigma ){
 
   return gradient->GetOutput();
 }
+
+
 
 // Initialize registration container
 RegistrationRigidType::Pointer registrationRigidContainer(
@@ -220,6 +226,24 @@ ResampleFilterType::Pointer resampleAffinePointer(
   return resample;
 }
 
+// Resample moving image with BSpline transform
+ResampleFilterType::Pointer resampleBSplinePointer(
+                                      ImageType* const fixed,
+                                      ImageType* const moving,
+                                      TransformBSplineType::Pointer transform ){
+  ResampleFilterType::Pointer resample = ResampleFilterType::New();
+
+  resample->SetTransform(               transform                 );
+  resample->SetInput(                     moving                  );
+  resample->SetSize( fixed->GetLargestPossibleRegion().GetSize()  );
+  resample->SetOutputOrigin(        fixed->GetOrigin()            );
+  resample->SetOutputSpacing(       fixed->GetSpacing()           );
+  resample->SetOutputDirection(     fixed->GetDirection()         );
+  resample->SetDefaultPixelValue(               0.0               );
+  resample->Update();
+  return resample;
+}
+
 // Calculate diff between image before and after registration
 DifferenceFilterType::Pointer diffFilter(
                                       ImageType* const moving,
@@ -235,17 +259,10 @@ DifferenceFilterType::Pointer diffFilter(
 
 // Cast unsigned short to float
 CastFilterFloatType::Pointer castFloatImage( UintImageType* const img ){
-/*
-  RescalerUintType::Pointer rescale = RescalerUintType::New();
-
-  rescale->SetInput( img );
-  rescale->SetOutputMinimum( 0 );
-  rescale->SetOutputMaximum( 65535 );
-*/
 
   CastFilterFloatType::Pointer castFilter = CastFilterFloatType::New();
   castFilter->SetInput( img );
-	castFilter->Update();
+  castFilter->Update();
 
   return castFilter;
 }
@@ -286,15 +303,15 @@ void finalRigidParameters(
   // Print results
   const double finalAngleInDegrees = finalAngle * 180.0 / itk::Math::pi;
 
-  std::cout << "Result = " << std::endl;
-  std::cout << " Angle (radians) " << finalAngle  << std::endl;
-  std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
-  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
-  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
-  std::cout << " Translation X = " << finalTranslationX  << std::endl;
-  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
-  std::cout << " Iterations    = " << numberOfIterations << std::endl;
-  std::cout << " Metric value  = " << bestValue          << std::endl;
+  std::cout << "Result ="         << std::endl;
+  std::cout << "Angle (radians) " << finalAngle  << std::endl;
+  std::cout << "Angle (degrees) " << finalAngleInDegrees  << std::endl;
+  std::cout << "Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << "Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << "Translation X = " << finalTranslationX  << std::endl;
+  std::cout << "Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << "Iterations    = " << numberOfIterations << std::endl;
+  std::cout << "Metric value  = " << bestValue          << std::endl;
 
 }
 
@@ -315,15 +332,15 @@ void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
   // Print results
   const double finalAngleInDegrees = finalAngle * 180.0 / itk::Math::pi;
 
-  std::cout << "Result = " << std::endl;
-  std::cout << " Angle (radians) " << finalAngle  << std::endl;
-  std::cout << " Angle (degrees) " << finalAngleInDegrees  << std::endl;
-  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
-  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
-  std::cout << " Translation X = " << finalTranslationX  << std::endl;
-  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
-  std::cout << " Iterations    = " << numberOfIterations << std::endl;
-  std::cout << " Metric value  = " << bestValue          << std::endl;
+  std::cout << "Result ="         << std::endl;
+  std::cout << "Angle (radians) " << finalAngle  << std::endl;
+  std::cout << "Angle (degrees) " << finalAngleInDegrees  << std::endl;
+  std::cout << "Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << "Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << "Translation X = " << finalTranslationX  << std::endl;
+  std::cout << "Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << "Iterations    = " << numberOfIterations << std::endl;
+  std::cout << "Metric value  = " << bestValue          << std::endl;
 
 }
 
@@ -341,13 +358,13 @@ void finalAffineParameters( TransformAffineType::Pointer transform,
   const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
   const double bestValue = optimizer->GetValue();
 
-  std::cout << "Result = " << std::endl;
-  std::cout << " Center X      = " << finalRotationCenterX  << std::endl;
-  std::cout << " Center Y      = " << finalRotationCenterY  << std::endl;
-  std::cout << " Translation X = " << finalTranslationX  << std::endl;
-  std::cout << " Translation Y = " << finalTranslationY  << std::endl;
-  std::cout << " Iterations    = " << numberOfIterations << std::endl;
-  std::cout << " Metric value  = " << bestValue          << std::endl;
+  std::cout << "Result ="         << std::endl;
+  std::cout << "Center X      = " << finalRotationCenterX  << std::endl;
+  std::cout << "Center Y      = " << finalRotationCenterY  << std::endl;
+  std::cout << "Translation X = " << finalTranslationX  << std::endl;
+  std::cout << "Translation Y = " << finalTranslationY  << std::endl;
+  std::cout << "Iterations    = " << numberOfIterations << std::endl;
+  std::cout << "Metric value  = " << bestValue          << std::endl;
 
   //Compute the rotation angle and scaling from SVD of the matrix
   // \todo Find a way to figure out if the scales are along X or along Y.

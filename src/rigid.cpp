@@ -84,14 +84,10 @@ TransformRigidType::Pointer registration1(
   finalTransform->SetParameters( transform->GetParameters() );
   finalTransform->SetFixedParameters( transform->GetFixedParameters() );
 
-  // Create the output transform
-  CompositeTransformType::Pointer outputTransform =
-                                        CompositeTransformType::New();
-  outputTransform->AddTransform(                   transform            );
-  outputTransform->AddTransform( registration->GetModifiableTransform() );
-
   // Print results
-  finalRigidParameters( transform, optimizer );
+  if ( params.output == 1 ){
+    finalRigidParameters( transform, optimizer );
+  }
 
   return finalTransform;
 };

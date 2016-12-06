@@ -12,8 +12,6 @@
 #include "readimage.h"
 using namespace std;
 
-// TODO: try/catch blocks for ->Update()
-
 int main(int argc, char *argv[]){
 
   if (argc < 2) {
@@ -25,13 +23,13 @@ int main(int argc, char *argv[]){
 
   // File format recognition and run correct function
   if (strstr(filename, "raw") ){
-    // File is .raw
+    // File is .raw, see src/multispec.cpp
     multispec_raw( argc, argv );
   } else if (strstr(filename, "img") ){
-    // File is .img
+    // File is .img, see src/hyperspec.cpp
     hyperspec_img(filename);
   } else if (strstr(filename, "mat") ){
-    // File is .mat
+    // File is .mat, see src/hyperspec.cpp
     hyperspec_mat(filename);
   } else {
     // Unknown format

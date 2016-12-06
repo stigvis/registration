@@ -16,27 +16,38 @@
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
 
-// Edge detection
+// Deformable image registration
+#include "itkBSplineTransform.h"
+#include "itkBSplineTransformParametersAdaptor.h"
+#include "itkCorrelationImageToImageMetricv4.h"
+#include "itkLBFGSOptimizerv4.h"
+#include "itkMemoryProbesCollectorBase.h"
+#include "itkTimeProbesCollectorBase.h"
+
+// Filtering
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkMedianImageFilter.h"
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
 
 // Transform
 #include "itkAffineTransform.h"
+#include "itkBSplineTransformInitializer.h"
 #include "itkCenteredSimilarity2DTransform.h"
 #include "itkCenteredRigid2DTransform.h"
 #include "itkCenteredTransformInitializer.h"
+#include "itkIdentityTransform.h"
+#include "itkTransformToDisplacementFieldFilter.h"
 
 // Image I/O
-#include "itkResampleImageFilter.h"
-#include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
-#include "itkIdentityTransform.h"
+#include "itkImageFileWriter.h"
 #include "itkImageMaskSpatialObject.h"
+#include "itkResampleImageFilter.h"
 
 // Image operations
-#include "itkMedianImageFilter.h"
-#include "itkSubtractImageFilter.h"
-#include "itkSquaredDifferenceImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkSquaredDifferenceImageFilter.h"
+#include "itkSubtractImageFilter.h"
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
@@ -54,8 +65,8 @@ public:
   typedef itk::RegularStepGradientDescentOptimizerv4<double>  OptimizerType;
   typedef const OptimizerType *                               OptimizerPointer;
 
-  void Execute(itk::Object *caller, const itk::EventObject & event) ITK_OVERRIDE;
-  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
+  void Execute(itk::Object *caller, const itk::EventObject & event ) ITK_OVERRIDE;
+  void Execute(const itk::Object * object, const itk::EventObject & event ) ITK_OVERRIDE;
 };
 
 // Instantiation of input images
@@ -66,41 +77,53 @@ typedef unsigned short  UintPixelType;
 
 typedef itk::Image< PixelType, Dimension >                  ImageType;
 typedef itk::Image< UintPixelType, Dimension >              UintImageType;
-typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
-                            ImageType,
-                            ImageType >                     GradientFilterType;
-typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
-                            UintImageType,
-                            UintImageType >                 GradientFilterUintType;
+
+// Filters
 typedef itk::MedianImageFilter<
                             ImageType,
                             ImageType >                     MedianFilterType;
-typedef itk::MedianImageFilter<
-                            UintImageType,
-                            UintImageType >                 MedianFilterUintType;
+typedef itk::GradientMagnitudeRecursiveGaussianImageFilter<
+                            ImageType,
+                            ImageType >                     GradientFilterType;
+typedef itk::ShrinkImageFilter<
+                            ImageType,
+                            ImageType >                     ShrinkFilterType;
 
+// Registration
+typedef itk::RegularStepGradientDescentOptimizerv4<
+                            double>                         OptimizerType;
+typedef itk::LBFGSOptimizerv4                               OptimizerBSplineType;
+typedef itk::MeanSquaresImageToImageMetricv4<
+                            ImageType,
+                            ImageType >                     MetricType;
 
 // Instantiation of transform types
+
+// Rigid
 typedef itk::CenteredRigid2DTransform<
                             double >                        TransformRigidType;
 typedef itk::CenteredTransformInitializer<
                             TransformRigidType,
-                            UintImageType,
-                            UintImageType >                 TransformRigidInitializerUintType;
-typedef itk::CenteredTransformInitializer<
-                            TransformRigidType,
                             ImageType,
                             ImageType >                     TransformRigidInitializerType;
+typedef itk::ImageRegistrationMethodv4<
+                            ImageType,
+                            ImageType,
+                            TransformRigidType >            RegistrationRigidType;
+
+// Similarity
 typedef itk::CenteredSimilarity2DTransform<
                             double >                        TransformSimilarityType;
 typedef itk::CenteredTransformInitializer<
                             TransformSimilarityType,
                             ImageType,
                             ImageType >                     TransformSimilarityInitializerType;
-typedef itk::CenteredTransformInitializer<
-                            TransformSimilarityType,
-                            UintImageType,
-                            UintImageType >                 TransformSimilarityInitializerUintType;
+typedef itk::ImageRegistrationMethodv4<
+                            ImageType,
+                            ImageType,
+                            TransformSimilarityType >       RegistrationSimilarityType;
+
+// Affine
 typedef itk::AffineTransform<
                             double,
                             Dimension >                     TransformAffineType;
@@ -108,63 +131,30 @@ typedef itk::CenteredTransformInitializer<
                             TransformAffineType,
                             ImageType,
                             ImageType >                     TransformAffineInitializerType;
-typedef itk::CenteredTransformInitializer<
-                            TransformAffineType,
-                            UintImageType,
-                            UintImageType >                 TransformAffineInitializerUintType;
-typedef itk::CompositeTransform<
-                            double,
-                            Dimension >                     CompositeTransformType;
-
-typedef itk::RegularStepGradientDescentOptimizerv4<
-                            double>                         OptimizerType;
-typedef itk::MeanSquaresImageToImageMetricv4<
-                            ImageType,
-                            ImageType >                     MetricType;
-typedef itk::MeanSquaresImageToImageMetricv4<
-                            UintImageType,
-                            UintImageType >                 MetricUintType;
-
-typedef itk::ImageRegistrationMethodv4<
-                            ImageType,
-                            ImageType,
-                            TransformRigidType >            RegistrationRigidType;
-typedef itk::ImageRegistrationMethodv4<
-                            UintImageType,
-                            UintImageType,
-                            TransformRigidType >            RegistrationRigidUintType;
-typedef itk::ImageRegistrationMethodv4<
-                            ImageType,
-                            ImageType,
-                            TransformSimilarityType >       RegistrationSimilarityType;
-typedef itk::ImageRegistrationMethodv4<
-                            UintImageType,
-                            UintImageType,
-                            TransformSimilarityType >       RegistrationSimilarityUintType;
 typedef itk::ImageRegistrationMethodv4<
                             ImageType,
                             ImageType,
                             TransformAffineType >           RegistrationAffineType;
+
+// BSpline
+const unsigned int SplineOrder = 3;
+typedef double CoordinateRepType;
+typedef itk::BSplineTransform<
+                            CoordinateRepType,
+                            Dimension,
+                            SplineOrder >                   TransformBSplineType;
 typedef itk::ImageRegistrationMethodv4<
-                            UintImageType,
-                            UintImageType,
-                            TransformAffineType >           RegistrationAffineUintType;
-typedef itk::SubtractImageFilter<
                             ImageType,
-                            ImageType,
-                            ImageType >                     DifferenceFilterType;
-typedef itk::SubtractImageFilter<
-                            UintImageType,
-                            UintImageType,
-                            UintImageType >                 DifferenceFilterUintType;
-typedef itk::ResampleImageFilter<
-                            ImageType,
-                            ImageType >                     ResampleFilterType;
-typedef itk::ResampleImageFilter<
-                            UintImageType,
-                            UintImageType >                 ResampleFilterUintType;
-typedef itk::ImageMaskSpatialObject<
-                            Dimension >                     MaskType;
+                            ImageType >                     RegistrationBSplineType;
+typedef itk::BSplineTransformInitializer<
+                            TransformBSplineType,
+                            ImageType >                     InitializerBSplineType;
+typedef TransformBSplineType::ParametersType                ParametersBSplineType;
+typedef itk::BSplineTransformParametersAdaptor<
+                            TransformBSplineType >          BSplineAdaptorType;
+typedef itk::RegistrationParameterScalesFromPhysicalShift<
+                            MetricType >                    ScalesEstimatorType;
+
 
 // Image casting, because registrations only supports float
 typedef itk::CastImageFilter<
@@ -182,7 +172,14 @@ typedef itk::RescaleIntensityImageFilter<
 
 
 
-// Set up writer
+// Set up outputs and writers
+typedef itk::SubtractImageFilter<
+                            ImageType,
+                            ImageType,
+                            ImageType >                     DifferenceFilterType;
+typedef itk::ResampleImageFilter<
+                            ImageType,
+                            ImageType >                     ResampleFilterType;
 typedef itk::ImageFileWriter<
                             ImageType >                     WriterType;
 typedef itk::ImageFileWriter<
@@ -228,27 +225,25 @@ ResampleFilterType::Pointer resampleAffinePointer(
                             ImageType* const fixed,
                             ImageType* const moving,
                             TransformAffineType::Pointer transform );
+ResampleFilterType::Pointer resampleBSplinePointer(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            TransformBSplineType::Pointer transform );
 DifferenceFilterType::Pointer diffFilter(
                             ImageType* const moving,
                             ResampleFilterType::Pointer resample );
 
-// Image I/O, float
+// Image filtering
 ImageType::Pointer            gradientFilter(
                               ImageType* const fixed,
                               int sigma );
 ImageType::Pointer            medianFilter(
                               ImageType* const fixed,
                               int radius );
+
+// Image I/O
 CastFilterFloatType::Pointer  castFloatImage(
                               UintImageType* const img );
-
-// Image I/O, uint
-UintImageType::Pointer        gradientUintFilter(
-                              UintImageType* const fixed,
-                              int sigma );
-UintImageType::Pointer        medianUintFilter(
-                              UintImageType* const fixed,
-                              int radius );
 CastFilterUintType::Pointer   castUintImage(
                               ImageType* const img );
 
@@ -260,8 +255,8 @@ void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
 void finalAffineParameters( TransformAffineType::Pointer transform,
                       OptimizerType::Pointer optimizer);
 
+// Image registrations
 #include "hyperspec.h"
-// Image registrations, float
 TransformRigidType::Pointer registration1(
                             ImageType* const fixed,
                             ImageType* const moving,
@@ -274,18 +269,9 @@ TransformAffineType::Pointer registration3(
                             ImageType* const fixed,
                             ImageType* const moving,
                             reg_params params );
+TransformBSplineType::Pointer registration4(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            reg_params params );
 
-// Image registrations, uint
-TransformRigidType::Pointer registrationUint1(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            reg_params params );
-TransformSimilarityType::Pointer registrationUint2(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            reg_params params );
-TransformAffineType::Pointer registrationUint3(
-                            UintImageType* const fixed,
-                            UintImageType* const moving,
-                            reg_params params );
 #endif // REGISTRATION_H_DEFINED
