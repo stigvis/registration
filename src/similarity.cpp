@@ -33,7 +33,14 @@ TransformSimilarityType::Pointer registration2(
   transform->SetScale( params.scale );
   transform->SetAngle( params.angle );
 
-  registration->SetInitialTransform( transform );
+  if (params.translation == 1 ){
+    CompositeTransformType::Pointer ttransform = translation(
+                                        fixed,
+                                        moving );
+    registration->SetInitialTransform( ttransform );
+  } else {
+    registration->SetInitialTransform( transform );
+  }
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );

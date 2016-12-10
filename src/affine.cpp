@@ -31,7 +31,14 @@ TransformAffineType::Pointer registration3(
                                         transform );
 
   // Set parameters
-  registration->SetInitialTransform( transform );
+  if (params.translation == 1 ){
+    CompositeTransformType::Pointer ttransform = translation(
+                                        fixed,
+                                        moving );
+    registration->SetInitialTransform( ttransform );
+  } else {
+    registration->SetInitialTransform( transform );
+  }
   registration->InPlaceOn();
 
   OptimizerScalesType optimizerScales( transform->GetNumberOfParameters() );

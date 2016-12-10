@@ -5,8 +5,8 @@
 // http://opensource.org/licenses/MIT
 // =========================================================================
 
-#ifndef MULTISPEC_READ_H_DEFINED
-#define MULTISPEC_READ_H_DEFINED
+#ifndef MULTISPEC_H_DEFINED
+#define MULTISPEC_H_DEFINED
 
 // Read .raw files
 void                    multispec_raw(
@@ -56,4 +56,4 @@ void                    writeRaw(
                     // Output name
                     std::string name );
 
-#endif // MULTISPEC_READ_H_DEFINED
+#endif // MULTISPEC_H_DEFINED

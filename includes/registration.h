@@ -13,6 +13,7 @@
 
 // Image registration
 #include "itkImageRegistrationMethodv4.h"
+#include "itkMattesMutualInformationImageToImageMetricv4.h"
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
 
@@ -35,8 +36,10 @@
 #include "itkCenteredSimilarity2DTransform.h"
 #include "itkCenteredRigid2DTransform.h"
 #include "itkCenteredTransformInitializer.h"
+#include "itkCompositeTransform.h"
 #include "itkIdentityTransform.h"
 #include "itkTransformToDisplacementFieldFilter.h"
+#include "itkTranslationTransform.h"
 
 // Image I/O
 #include "itkCastImageFilter.h"
@@ -48,6 +51,28 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSquaredDifferenceImageFilter.h"
 #include "itkSubtractImageFilter.h"
+/*
+// Introduce a class that will keep track of the Translation registration
+template <typename TRegistration>
+class RegistrationInterfaceCommand : public itk::Command
+{
+public:
+  typedef  RegistrationInterfaceCommand   Self;
+  typedef  itk::Command                   Superclass;
+  typedef  itk::SmartPointer<Self>        Pointer;
+  itkNewMacro( Self );
+
+protected:
+  RegistrationInterfaceCommand() {};
+
+public:
+  typedef   TRegistration                          RegistrationType;
+
+  void Execute( itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
+  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
+};
+
+*/
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
@@ -98,6 +123,25 @@ typedef itk::MeanSquaresImageToImageMetricv4<
                             ImageType >                     MetricType;
 
 // Instantiation of transform types
+
+// Translation
+typedef itk::TranslationTransform<
+                            double,
+                            Dimension >                     TTransformType;
+typedef itk::MattesMutualInformationImageToImageMetricv4<
+                            ImageType,
+                            ImageType >                     TMetricType;
+typedef itk::ImageRegistrationMethodv4<
+                            ImageType,
+                            ImageType,
+                            TTransformType >                TRegistrationType;
+typedef OptimizerType::ParametersType                       TParametersType;
+typedef itk::CompositeTransform<
+                            double,
+                            Dimension >                     CompositeTransformType;
+//typedef RegistrationInterfaceCommand<
+//                            TRegistrationType >             TranslationCommandType;
+
 
 // Rigid
 typedef itk::CenteredRigid2DTransform<
@@ -273,5 +317,8 @@ TransformBSplineType::Pointer registration4(
                             ImageType* const fixed,
                             ImageType* const moving,
                             reg_params params );
+CompositeTransformType::Pointer translation(
+                            ImageType* const fixed,
+                            ImageType* const moving );
 
 #endif // REGISTRATION_H_DEFINED

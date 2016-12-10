@@ -6,6 +6,41 @@
 // =========================================================================
 
 #include "registration.h"
+/*
+// Keeping track of translation registration
+template <typename TRegistration>
+void RegistrationInterfaceCommand<TRegistration>::Execute( itk::Object * object,
+                                            const itk::EventObject & event){
+  Execute( (const itk::Object *) object , event );
+}
+
+template <typename TRegistration>
+void RegistrationInterfaceCommand<TRegistration>::Execute( const itk::Object * object,
+                                            const itk::EventObject & event){
+  if( !(itk::MultiResolutionIterationEvent().CheckEvent( &event ) ) ){
+    return;
+  }
+
+//  std::cout << "\nObserving from class " << object->GetNameOfClass();
+  if (!object->GetObjectName().empty()){
+    std::cout << " \"" << object->GetObjectName() << "\"" << std::endl;
+  }
+
+  const RegistrationType * registration = static_cast<const RegistrationType *>( object );
+
+  unsigned int currentLevel = registration->GetCurrentLevel();
+  typename RegistrationType::ShrinkFactorsPerDimensionContainerType shrinkFactors =
+                                      registration->GetShrinkFactorsPerDimension( currentLevel );
+  typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
+                                      registration->GetSmoothingSigmasPerLevel();
+
+//  std::cout << "-------------------------------------" << std::endl;
+//  std::cout << " Current multi-resolution level = " << currentLevel << std::endl;
+//  std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+//  std::cout << "    smoothing sigma = " << smoothingSigmas[currentLevel] << std::endl;
+//  std::cout << std::endl;
+}
+*/
 
 // Keeping track of the iterations
 void CommandIterationUpdate::Execute(itk::Object *caller, const itk::EventObject & event){

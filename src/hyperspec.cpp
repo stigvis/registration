@@ -466,24 +466,26 @@ conf_err_t params_read( struct reg_params *params ){
   }
 
   // Extract parameters from config
-  string regmethod  = getParam(confText, "regmethod");
-  string reg_name   = getParam(confText, "reg_name" );
-  string diff_conf  = getParam(confText, "diff_conf");
-  string diff_name  = getParam(confText, "diff_name");
-  string median     = getParam(confText, "median"   );
-  string radius     = getParam(confText, "radius"   );
-  string gradient   = getParam(confText, "gradient" );
-  string sigma      = getParam(confText, "sigma"    );
-  string angle      = getParam(confText, "angle"    );
-  string scale      = getParam(confText, "scale"    );
-  string lrate      = getParam(confText, "lrate"    );
-  string slength    = getParam(confText, "slength"  );
-  string niter      = getParam(confText, "niter"    );
+  string regmethod  = getParam(confText, "regmethod"    );
+  string reg_name   = getParam(confText, "reg_name"     );
+  string diff_conf  = getParam(confText, "diff_conf"    );
+  string diff_name  = getParam(confText, "diff_name"    );
+  string median     = getParam(confText, "median"       );
+  string radius     = getParam(confText, "radius"       );
+  string gradient   = getParam(confText, "gradient"     );
+  string sigma      = getParam(confText, "sigma"        );
+  string angle      = getParam(confText, "angle"        );
+  string scale      = getParam(confText, "scale"        );
+  string lrate      = getParam(confText, "lrate"        );
+  string slength    = getParam(confText, "slength"      );
+  string niter      = getParam(confText, "niter"        );
   string numberOfLevels
-                    = getParam(confText, "numoflev" );
+                    = getParam(confText, "numoflev"     );
   string translationScale
-                    = getParam(confText, "tscale"   );
-  string output     = getParam(confText, "output"   );
+                    = getParam(confText, "tscale"       );
+  string translation
+                    = getParam(confText, "translation"  );
+  string output     = getParam(confText, "output"       );
 
   cout << "Reading parameters from params.conf" << endl;
 
@@ -600,6 +602,16 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translationScale.c_str(),
                                                   NULL);
   }
+  if (translation.empty()){
+    params->translation
+                      = 0;
+    cout << "Missing translation, setting to default value: "
+      << params->translation << endl;
+  } else {
+    params->translation
+                      = strtod(translation.c_str(),
+                                                  NULL);
+  }
   if (output.empty()){
     params->output    = 1;
     cout << "Missing output, setting to default value: "
@@ -625,6 +637,7 @@ conf_err_t params_read( struct reg_params *params ){
         << " Number of iterations: "<< params->niter
         << " numberOfLevels: "      << params->numberOfLevels
         << " translationScale: "    << params->translationScale
+        << " translation: "         << params->translation
         << " output: "              << params->output
         << endl;
 

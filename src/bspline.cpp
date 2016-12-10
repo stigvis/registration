@@ -40,7 +40,14 @@ TransformBSplineType::Pointer registration4(  ImageType* const fixed,
 
   transform->SetIdentity();
 
-  registration->SetInitialTransform( transform );
+  if (params.translation == 1 ){
+    CompositeTransformType::Pointer ttransform = translation(
+                                        fixed,
+                                        moving );
+    registration->SetInitialTransform( ttransform );
+  } else {
+    registration->SetInitialTransform( transform );
+  }
   registration->InPlaceOn();
   registration->SetFixedImage(    fixed     );
   registration->SetMovingImage(   moving    );
@@ -74,7 +81,7 @@ TransformBSplineType::Pointer registration4(  ImageType* const fixed,
   // Add time and memory probes
   itk::TimeProbesCollectorBase chronometer;
   itk::MemoryProbesCollectorBase memorymeter;
-  
+
   cout << "Starting Registration"       << endl;
 
   try

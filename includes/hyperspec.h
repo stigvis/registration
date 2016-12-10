@@ -48,6 +48,8 @@ struct reg_params {
   unsigned int numberOfLevels;
   // Translation scale
   double translationScale;
+  // Intial Translation transform
+  int translation;
   // Option for suppressing iteration outputs
   int output;
 };
