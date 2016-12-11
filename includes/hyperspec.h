@@ -50,6 +50,8 @@ struct reg_params {
   double translationScale;
   // Intial Translation transform
   int translation;
+  // Choose between mutual information and mean squares
+  int metric;
   // Option for suppressing iteration outputs
   int output;
 };

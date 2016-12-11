@@ -90,7 +90,7 @@ void hyperspec_img(const char *filename){
       out = writeITK( moving, out, i, header );
       continue;
     }
-    
+
     // Filter images
     fmoving = moving;
     if ( params.median == 1){
@@ -290,7 +290,7 @@ void hyperspec_mat(const char *filename){
       out = writeMat( moving, i, xSize, ySize, out );
       continue;
     }
-    
+
     // Filter images
     fmoving = moving;
     if ( params.median == 1){
@@ -485,6 +485,7 @@ conf_err_t params_read( struct reg_params *params ){
                     = getParam(confText, "tscale"       );
   string translation
                     = getParam(confText, "translation"  );
+  string metric     = getParam(confText, "metric"       );
   string output     = getParam(confText, "output"       );
 
   cout << "Reading parameters from params.conf" << endl;
@@ -612,6 +613,14 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translation.c_str(),
                                                   NULL);
   }
+  if (metric.empty()){
+    params->metric    = 0;
+    cout << "Missing translation, setting to default value: "
+      << params->metric << endl;
+  } else {
+    params->metric    = strtod(translation.c_str(),
+                                                  NULL);
+  }
   if (output.empty()){
     params->output    = 1;
     cout << "Missing output, setting to default value: "
@@ -621,24 +630,43 @@ conf_err_t params_read( struct reg_params *params ){
   }
 
   fclose(fp);
-  cout  << "Parameters: "           << endl;
-  cout  << "Registration method: "  << params->regmethod
-        << " Registration name: "   << params->reg_name
-        << " Difference image: "    << params->diff_conf
-        << " Difference name: "     << params->diff_name
-        << " Median filtering: "    << params->median
-        << " Gradient filtering: "  << params->gradient
-        << " Median radius: "       << params->radius
-        << " Gradient sigma: "      << params->sigma
-        << " Initial angle: "       << params->angle
-        << " Initial scale: "       << params->scale
-        << " Learning rate: "       << params->lrate
-        << " Minimum step length: " << params->slength
-        << " Number of iterations: "<< params->niter
-        << " numberOfLevels: "      << params->numberOfLevels
-        << " translationScale: "    << params->translationScale
-        << " translation: "         << params->translation
-        << " output: "              << params->output
+  cout  << "Parameters:"           << endl
+        << endl
+        << "Registration method: " << params->regmethod
+        << endl
+        << "Registration name: "   << params->reg_name
+        << endl
+        << "Difference image: "    << params->diff_conf
+        << endl
+        << "Difference name: "     << params->diff_name
+        << endl
+        << "Median filtering: "    << params->median
+        << endl
+        << "Gradient filtering: "  << params->gradient
+        << endl
+        << "Median radius: "       << params->radius
+        << endl
+        << "Gradient sigma: "      << params->sigma
+        << endl
+        << "Initial angle: "       << params->angle
+        << endl
+        << "Initial scale: "       << params->scale
+        << endl
+        << "Learning rate: "       << params->lrate
+        << endl
+        << "Minimum step length: " << params->slength
+        << endl
+        << "Number of iterations: "<< params->niter
+        << endl
+        << "numberOfLevels: "      << params->numberOfLevels
+        << endl
+        << "translationScale: "    << params->translationScale
+        << endl
+        << "Translation: "         << params->translation
+        << endl
+        << "Metric: "              << params->metric
+        << endl
+        << "Output: "              << params->output
         << endl;
 
   return CONF_NO_ERR;

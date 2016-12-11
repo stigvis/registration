@@ -36,8 +36,9 @@ TransformSimilarityType::Pointer registration2(
   if (params.translation == 1 ){
     CompositeTransformType::Pointer ttransform = translation(
                                         fixed,
-                                        moving );
-    registration->SetInitialTransform( ttransform );
+                                        moving,
+                                        params );
+    registration->SetMovingInitialTransform( ttransform );
   } else {
     registration->SetInitialTransform( transform );
   }

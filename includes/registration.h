@@ -125,6 +125,8 @@ typedef itk::MeanSquaresImageToImageMetricv4<
 // Instantiation of transform types
 
 // Translation
+typedef itk::RegularStepGradientDescentOptimizerv4<
+                            double >                        TOptimizerType;
 typedef itk::TranslationTransform<
                             double,
                             Dimension >                     TTransformType;
@@ -319,6 +321,7 @@ TransformBSplineType::Pointer registration4(
                             reg_params params );
 CompositeTransformType::Pointer translation(
                             ImageType* const fixed,
-                            ImageType* const moving );
+                            ImageType* const moving,
+                            reg_params params );
 
 #endif // REGISTRATION_H_DEFINED

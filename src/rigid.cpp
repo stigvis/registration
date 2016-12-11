@@ -36,8 +36,10 @@ TransformRigidType::Pointer registration1(
   if ( params.translation == 1) {
     CompositeTransformType::Pointer ttransform = translation(
                                         fixed,
-                                        moving );
-    registration->SetInitialTransform( ttransform );
+                                        moving,
+                                        params );
+    registration->SetInitialTransform( transform );
+    registration->SetMovingInitialTransform( ttransform );
   } else {
     registration->SetInitialTransform( transform );
   }

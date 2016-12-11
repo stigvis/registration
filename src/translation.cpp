@@ -65,23 +65,33 @@ public:
 
 CompositeTransformType::Pointer translation(
                                 ImageType* const fixed,
-                                ImageType* const moving ){
+                                ImageType* const moving,
+                                reg_params params ){
 
-  OptimizerType::Pointer        transOptimizer     = OptimizerType::New();
-  TMetricType::Pointer          transMetric        = TMetricType::New();
+  TOptimizerType::Pointer       transOptimizer     = TOptimizerType::New();
   TRegistrationType::Pointer    transRegistration  = TRegistrationType::New();
 
   transRegistration->SetOptimizer(     transOptimizer     );
-  transRegistration->SetMetric(        transMetric        );
+
+  if ( params.metric == 1 ){
+    TMetricType::Pointer                  transMetric       =
+                                          TMetricType::New();
+    transRegistration->SetMetric(         transMetric       );
+    transMetric->SetNumberOfHistogramBins( 24 );
+  } else {
+    MetricType::Pointer                   transMetric       =
+                                          MetricType::New();
+    transRegistration->SetMetric(         transMetric       );
+  }
 
   TTransformType::Pointer   movingInitTx  = TTransformType::New();
 
   TParametersType initialParameters( movingInitTx->GetNumberOfParameters() );
 
   // Initial offset in mm along X
-  initialParameters[0] = 3.0;
+  initialParameters[0] = 0.0;
   // Initial offset in mm along Y
-  initialParameters[1] = 5.0;
+  initialParameters[1] = 0.0;
 
   movingInitTx->SetParameters( initialParameters );
 
@@ -98,22 +108,22 @@ CompositeTransformType::Pointer translation(
   const unsigned int numberOfLevels1 = 1;
   TRegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel1;
   shrinkFactorsPerLevel1.SetSize( numberOfLevels1 );
-  shrinkFactorsPerLevel1[0] = 3;
+  shrinkFactorsPerLevel1[0] = 1;
 
   TRegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel1;
   smoothingSigmasPerLevel1.SetSize( numberOfLevels1 );
-  smoothingSigmasPerLevel1[0] = 2;
+  smoothingSigmasPerLevel1[0] = 1;
 
   transRegistration->SetNumberOfLevels ( numberOfLevels1 );
   transRegistration->SetShrinkFactorsPerLevel( shrinkFactorsPerLevel1 );
   transRegistration->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel1 );
 
-  transMetric->SetNumberOfHistogramBins( 24 );
-  transOptimizer->SetNumberOfIterations( 500 );
-  transOptimizer->SetRelaxationFactor( 0.5 );
+  transOptimizer->SetNumberOfIterations( params.niter );
+  // Relaxation, for speed and coarse pre-registration
+  transOptimizer->SetRelaxationFactor( 0.1 );
 
-  transOptimizer->SetLearningRate( 8 );
-  transOptimizer->SetMinimumStepLength( 1.0 );
+  transOptimizer->SetLearningRate( params.lrate );
+  transOptimizer->SetMinimumStepLength( params.slength );
 
   typedef RegistrationInterfaceCommand<TRegistrationType> TranslationCommandType;
   CommandIterationUpdate::Pointer observer1 = CommandIterationUpdate::New();
@@ -138,6 +148,14 @@ CompositeTransformType::Pointer translation(
 
   compositeTransform->AddTransform(
     transRegistration->GetModifiableTransform() );
+
+  cout << "\nInitial parameters of the registration process: "  << endl
+       << movingInitTx->GetParameters() << endl;
+
+  cout << "\nTranslation parameters after registration: "       << endl
+       << transOptimizer->GetCurrentPosition()                  << endl
+       << " Last LearningRate: "
+       << transOptimizer->GetCurrentStepLength()                << endl;
 
   return compositeTransform;
 
