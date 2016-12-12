@@ -261,6 +261,8 @@ void writeRaw(  UintImageType* itkimg,
 
   // Recursive names
   name += to_string(i);
+  string writername = name;
+  writername += ".tif";
   name += ".raw";
 
   // Prepare
@@ -278,10 +280,17 @@ void writeRaw(  UintImageType* itkimg,
     }
   }
 
+  // Need .tif format for the report
+  UintWriterType::Pointer writer = UintWriterType::New();
+  writer->SetFileName( writername );
+  writer->SetInput( itkimg );
+  writer->Update();
+
   cout << "Out: " << name << endl;
   // Write
   fid.write (reinterpret_cast<char*>(out_data), size);
   // Clean
   delete [] out_data;
   fid.close();
+
 }

@@ -11,22 +11,6 @@
 #include "hyperspec.h"
 using namespace std;
 
-/* TODO:
-
-Testing:
-Lise_arm_before_occlusion_mnf_inversetransformed.img
--> Reduced to 1601x1401x40 -> Fixed = 20
--> 2: 100, -100
--> 4: 200, -100
--> 6: 200, -100
--> 8: 200, -200
--> 10: 20 deg
--> 12: 40 deg
--> 14: -20 deg
--> 16: -40 deg
-
-*/
-
 void hyperspec_img(const char *filename){
 
   // Read parameters config
