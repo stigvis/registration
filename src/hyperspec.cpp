@@ -157,6 +157,17 @@ void hyperspec_img(const char *filename){
       diff = writeITK( outdiff, diff, i, header );
     }
 
+    // Need some images for the report
+    WriterType::Pointer writer = WriterType::New();
+    string name = params.reg_name;
+    name += to_string(i);
+    name += ".tif";
+    writer->SetFileName( name );
+    writer->SetInput( output );
+    //writer->SetInput( moving );
+    writer->Update();
+
+
     cout << "Done with " << i + 1 << " of " << header.bands << endl;
 
   }
@@ -219,18 +230,20 @@ void hyperspec_mat(const char *filename){
         << xSize
         << "x"
         << ySize
-        << ", Wavelengths: " ;
+        << ", Wavelengths: ";
   for (int i=0; i<nWave-1; i++){
     cout
         << wData[i]
         << ", ";
   }
   cout  << wData[nWave-1]
+        << " Data type W: "
+        << wavelengthsd->data_type
         << " Array size: "
         << HSId->nbytes/HSId->data_size
         << " Compression: "
         << HSId->compression
-        << " Data type: "
+        << " Data type D: "
         << HSId->data_type
         << endl;
 
@@ -267,11 +280,11 @@ void hyperspec_mat(const char *filename){
   for (int i=0; i<nSize; i++){
 
     // Read moving
-    moving = readMat(moving, i, xSize, ySize, hData);
+    moving = readMat( moving, i, xSize, ySize, hData );
 
     // Skip center band (fixed)
     if ( i == nSize/2 ){
-      out = writeMat( moving, i, xSize, ySize, out );
+      out = writeMat( moving, out, i, xSize, ySize );
       continue;
     }
 
@@ -352,9 +365,9 @@ void hyperspec_mat(const char *filename){
     outdiff->Update();
 
     // Update output array(s)
-    out = writeMat( output, i, xSize, ySize, out );
+    out = writeMat( output, out, i, xSize, ySize );
     if ( params.diff_conf == 1){
-      diff = writeMat( output, i, xSize, ySize, diff );
+      diff = writeMat( output, diff, i, xSize, ySize );
     }
 
     cout << "Done with " << i + 1 << " of " << nSize << endl;
@@ -439,7 +452,9 @@ conf_err_t params_read( struct reg_params *params ){
   // Open for reading
   FILE *fp = fopen("params.conf", "rt");
   if (fp == NULL){
-    return CONF_FILE_NOT_FOUND;
+    cout  << "Missing config file. Will use default values."
+          << endl;
+  //  return CONF_FILE_NOT_FOUND;
   }
   char confText[MAX_FILE_SIZE] = "";
   int sizeRead = 1;
@@ -476,98 +491,98 @@ conf_err_t params_read( struct reg_params *params ){
 
   // Convert strings to values
   // Set default values for missing strings
-  if (regmethod == "" ){
+  if (regmethod.empty() || fp == NULL ){
     params->regmethod = 1;
     cout << "Missing regmethod, setting to default value: "
       << params->regmethod << endl;
   } else {
     params->regmethod = strtod(regmethod.c_str(), NULL);
   }
-  if (reg_name == "" ){
+  if (reg_name.empty() || fp == NULL ){
     params->reg_name = "out";
     cout << "Missing reg_name, setting to default value: "
       << params->reg_name << endl;
   } else {
-    params->reg_name = reg_name;//.c_str();
+    params->reg_name = reg_name;
   }
-  if (diff_conf == ""){
+  if (diff_conf.empty() || fp == NULL ){
     params->diff_conf = 1;
     cout << "Missing diff_conf, setting to default value: "
       << params->diff_conf << endl;
   } else {
     params->diff_conf = strtod(diff_conf.c_str(), NULL);
   }
-  if (diff_name == "" ){
+  if (diff_name.empty() || fp == NULL ){
     params->diff_name = "diffout";
     cout << "Missing diff_name, setting to default value: "
       << params->regmethod << endl;
   } else {
-    params->diff_name = diff_name;//.c_str();
+    params->diff_name = diff_name;
   }
-  if (median.empty()){
+  if (median.empty() || fp == NULL ){
     params->median    = 1;
     cout << "Missing median, setting to default value: "
       << params->median << endl;
   } else {
     params->median    = strtod(median.c_str(),    NULL);
   }
-  if (radius.empty()){
+  if (radius.empty() || fp == NULL ){
     params->radius    = 1;
     cout << "Missing radius, setting to default value: "
       << params->radius << endl;
   } else {
     params->radius    = strtod(radius.c_str(),    NULL);
   }
-  if (gradient.empty()){
+  if (gradient.empty() || fp == NULL ){
     params->gradient  = 0;
     cout << "Missing gradient, setting to default value: "
       << params->gradient << endl;
   } else {
     params->gradient  = strtod(gradient.c_str(),  NULL);
   }
-  if (sigma.empty()){
+  if (sigma.empty() || fp == NULL ){
     params->sigma     = 1;
     cout << "Missing sigma, setting to default value: "
       << params->sigma << endl;
   } else {
     params->sigma     = strtod(sigma.c_str(),     NULL);
   }
-  if (angle.empty()){
+  if (angle.empty() || fp == NULL ){
     params->angle     = 0.0;
     cout << "Missing angle, setting to default value: "
       << params->angle << endl;
   } else {
     params->angle     = strtod(angle.c_str(),     NULL);
   }
-  if (scale.empty()){
+  if (scale.empty() || fp == NULL ){
     params->scale     = 1.0;
     cout << "Missing scale, setting to default value: "
       << params->scale << endl;
   } else {
     params->scale     = strtod(scale.c_str(),     NULL);
   }
-  if (lrate.empty()){
+  if (lrate.empty() || fp == NULL ){
     params->lrate     = 1.0;
     cout << "Missing lrate, setting to default value: "
       << params->lrate << endl;
   } else {
     params->lrate     = strtod(lrate.c_str(),     NULL);
   }
-  if (slength.empty()){
+  if (slength.empty() || fp == NULL ){
     params->slength   = 0.0001;
     cout << "Missing slength, setting to default value: "
       << params->slength << endl;
   } else {
     params->slength   = strtod(slength.c_str(),   NULL);
   }
-  if (niter.empty()){
+  if (niter.empty() || fp == NULL ){
     params->niter     = 300;
     cout << "Missing niter, setting to default value: "
       << params->niter << endl;
   } else {
     params->niter     = strtod(niter.c_str(),     NULL);
   }
-  if (numberOfLevels.empty()){
+  if (numberOfLevels.empty() || fp == NULL ){
     params->numberOfLevels
                       = 1;
     cout << "Missing numoflev, setting to default value: "
@@ -577,7 +592,7 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(numberOfLevels.c_str(),
                                                   NULL);
   }
-  if (translationScale.empty()){
+  if (translationScale.empty() || fp == NULL ){
     params->translationScale
                       = 0.001;
     cout << "Missing tscale, setting to default value: "
@@ -587,7 +602,7 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translationScale.c_str(),
                                                   NULL);
   }
-  if (translation.empty()){
+  if (translation.empty() || fp == NULL ){
     params->translation
                       = 0;
     cout << "Missing translation, setting to default value: "
@@ -597,7 +612,7 @@ conf_err_t params_read( struct reg_params *params ){
                       = strtod(translation.c_str(),
                                                   NULL);
   }
-  if (metric.empty()){
+  if (metric.empty() || fp == NULL ){
     params->metric    = 0;
     cout << "Missing translation, setting to default value: "
       << params->metric << endl;
@@ -605,7 +620,7 @@ conf_err_t params_read( struct reg_params *params ){
     params->metric    = strtod(translation.c_str(),
                                                   NULL);
   }
-  if (output.empty()){
+  if (output.empty() || fp == NULL ){
     params->output    = 1;
     cout << "Missing output, setting to default value: "
       << params->output << endl;
@@ -714,7 +729,8 @@ ImageType::Pointer readMat( ImageType* const itkmat,
                                 float *hData ){
   for (int j=0; j < ySize; j++) {
     for (int k=0; k < xSize; k++) {
-      UintImageType::IndexType pixelIndex;
+      //UintImageType::IndexType pixelIndex;
+      ImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
       pixelIndex[1] = j;
       itkmat->SetPixel(pixelIndex, hData[j + xSize*i + xSize*ySize*i]);
@@ -724,10 +740,11 @@ ImageType::Pointer readMat( ImageType* const itkmat,
 }
 
 float* writeMat(            ImageType* const itkmat,
+                            float *hData,
                             int i,
                             unsigned xSize,
-                            unsigned ySize,
-                            float *hData ){
+                            unsigned ySize ){
+
 
 }
 

@@ -149,10 +149,10 @@ CompositeTransformType::Pointer translation(
   compositeTransform->AddTransform(
     transRegistration->GetModifiableTransform() );
 
-  cout << "\nInitial parameters of the registration process: "  << endl
+  cout << "\nInitial parameters of the registration process:"   << endl
        << movingInitTx->GetParameters() << endl;
 
-  cout << "\nTranslation parameters after registration: "       << endl
+  cout << "\nTranslation parameters after registration:"        << endl
        << transOptimizer->GetCurrentPosition()                  << endl
        << " Last LearningRate: "
        << transOptimizer->GetCurrentStepLength()                << endl;

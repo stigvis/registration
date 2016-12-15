@@ -146,13 +146,13 @@ ImageType::Pointer  readMat(
 float*              writeMat(
                             // Pointer to read from
                             ImageType* const itkmat,
+                            // Float to write to
+                            float *hData,
                             // Image band
                             int i,
                             // Image width
                             unsigned xSize,
                             // Image height
-                            unsigned ySize,
-                            // Float to write to
-                            float *hData );
+                            unsigned ySize );
 
 #endif // HYPERSPEC_READ_H_DEFINED

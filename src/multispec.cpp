@@ -262,7 +262,7 @@ void writeRaw(  UintImageType* itkimg,
   // Recursive names
   name += to_string(i);
   string writername = name;
-  writername += ".tif";
+  writername += ".png";
   name += ".raw";
 
   // Prepare
