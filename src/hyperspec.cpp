@@ -222,7 +222,7 @@ void hyperspec_mat(const char *filename){
   unsigned nSize = HSId->dims[2];
   //Wavelengths
   unsigned nWave = wavelengthsd->dims[1];
-  static double *wData = static_cast<double*>(wavelengthsd->data);
+  float *wData = static_cast<float*>(wavelengthsd->data);
   float *hData = static_cast<float*>(HSId->data);
   cout  << "Number of images: "
         << nSize
@@ -237,13 +237,15 @@ void hyperspec_mat(const char *filename){
         << ", ";
   }
   cout  << wData[nWave-1]
-        << " Data type W: "
+        << " Data type, wavelengths: "
         << wavelengthsd->data_type
+        << " Compression, wavelengths: "
+        << wavelengthsd->compression
         << " Array size: "
         << HSId->nbytes/HSId->data_size
-        << " Compression: "
+        << " Compression, images: "
         << HSId->compression
-        << " Data type D: "
+        << " Data type, images: "
         << HSId->data_type
         << endl;
 
@@ -375,6 +377,10 @@ void hyperspec_mat(const char *filename){
   }
 
   // Write to .mat container
+  outMat( out, params.reg_name, wavelengthsd, HSId );
+  if (params.diff_conf == 1 ){
+    outMat( diff, params.diff_name, wavelengthsd, HSId );
+  }
 
   // Cleanup
   Mat_VarFree(wavelengthsi);
@@ -744,7 +750,31 @@ float* writeMat(            ImageType* const itkmat,
                             int i,
                             unsigned xSize,
                             unsigned ySize ){
-
-
+  for ( int j=0; j < ySize; j++ ){
+    for ( int k=0; k < xSize; k++ ){
+      ImageType::IndexType pixelIndex;
+      pixelIndex[0] = k;
+      pixelIndex[1] = j;
+      hData[j + xSize*i + xSize*ySize*i]
+        = itkmat->GetPixel(pixelIndex);
+    }
+  }
+  return hData;
 }
 
+void outMat(                float *hData,
+                            string outname,
+                            matvar_t *wavelengthsd,
+                            matvar_t *HSId ){
+
+  mat_t *matout;
+
+  matout = Mat_Open(outname.c_str(),MAT_ACC_RDWR);
+  Mat_VarWrite( matout, wavelengthsd, MAT_COMPRESSION_ZLIB );
+
+  matvar_t *HSI = Mat_VarCreate("HSI",MAT_C_SINGLE,MAT_T_SINGLE,
+    HSId->rank,HSId->dims,static_cast<void*>(hData),0);
+  Mat_VarWrite( matout, HSI, MAT_COMPRESSION_ZLIB );
+  Mat_VarFree(HSI);
+
+}

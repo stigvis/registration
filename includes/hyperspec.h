@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include "string.h"
+#include "matio.h"
 
 #ifndef HYPERSPEC_H_DEFINED
 #define HYPERSPEC_H_DEFINED
@@ -154,5 +155,16 @@ float*              writeMat(
                             unsigned xSize,
                             // Image height
                             unsigned ySize );
+
+// Write float* to .mat
+void                outMat(
+                            // Output float
+                            float *hData,
+                            // Output name
+                            std::string outname,
+                            // Wavelengths
+                            matvar_t *wavelengthsd,
+                            // Dimensions
+                            matvar_t *HSId );
 
 #endif // HYPERSPEC_READ_H_DEFINED
