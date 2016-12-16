@@ -7,7 +7,6 @@
 
 #include "readimage.h"
 #include "registration.h"
-#include "matio.h"
 #include "hyperspec.h"
 using namespace std;
 
