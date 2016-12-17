@@ -242,6 +242,8 @@ void hyperspec_mat(const char *filename){
         << wavelengthsd->compression
         << " Array size: "
         << HSId->nbytes/HSId->data_size
+        << " Rank, images: "
+        << HSId->rank
         << " Compression, images: "
         << HSId->compression
         << " Data type, images: "
@@ -364,6 +366,16 @@ void hyperspec_mat(const char *filename){
 
     outdiff = difference->GetOutput();
     outdiff->Update();
+
+    // Need some images for the report
+    WriterType::Pointer writer = WriterType::New();
+    string name = params.reg_name;
+    name += to_string(i);
+    name += ".tif";
+    writer->SetFileName( name );
+    writer->SetInput( output );
+    //writer->SetInput( moving );
+    writer->Update();
 
     // Update output array(s)
     out = writeMat( output, out, i, xSize, ySize );
@@ -734,11 +746,10 @@ ImageType::Pointer readMat( ImageType* const itkmat,
                                 float *hData ){
   for (int j=0; j < ySize; j++) {
     for (int k=0; k < xSize; k++) {
-      //UintImageType::IndexType pixelIndex;
       ImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
       pixelIndex[1] = j;
-      itkmat->SetPixel(pixelIndex, hData[j + xSize*i + xSize*ySize*i]);
+      itkmat->SetPixel(pixelIndex, hData[k + xSize*j + xSize*ySize*i]);
     }
   }
   return itkmat;
@@ -754,7 +765,7 @@ float* writeMat(            ImageType* const itkmat,
       ImageType::IndexType pixelIndex;
       pixelIndex[0] = k;
       pixelIndex[1] = j;
-      hData[j + xSize*i + xSize*ySize*i]
+      hData[k + xSize*j + xSize*ySize*i]
         = itkmat->GetPixel(pixelIndex);
     }
   }
@@ -766,14 +777,40 @@ void outMat(                float *hData,
                             matvar_t *wavelengthsd,
                             matvar_t *HSId ){
 
+  /*
+  unsigned  xx = HSId->dims[0];
+  unsigned  yy = HSId->dims[1];
+  unsigned  nn = HSId->dims[2];
+
+  float array3d[xx][yy][nn] = {0}; //HSId->dims[0]][HSId->dims[1]][HSId->dims[2]] = { 0 };
+
+  // fill 3d array
+  for (unsigned k = 0; k < nn; k++){ //HSId->dims[2]; k++){
+    for (unsigned j = 0; j < yy; j++){ //HSId->dims[1]; j++){
+      for (unsigned i = 0; i < xx; i++){ //HSId->dims[0]; i++){
+        //array3d[i][j][k] = hData[i+j*yy+k*yy*xx];//j*HSId->dims[0]+k*HSId->dims[1]*HSId->dims[2]];
+      }
+    }
+  }
+*/
+
+
+  // Prepare
+  size_t dim3d[3] = { HSId->dims[0], HSId->dims[1], HSId->dims[2] };
+  outname += ".mat";
+
   mat_t *matout;
 
-  matout = Mat_Open(outname.c_str(),MAT_ACC_RDWR);
+  // Write
+  matout = Mat_CreateVer(outname.c_str(),NULL,MAT_FT_MAT5);
   Mat_VarWrite( matout, wavelengthsd, MAT_COMPRESSION_ZLIB );
 
-  matvar_t *HSI = Mat_VarCreate("HSI",MAT_C_SINGLE,MAT_T_SINGLE,
-    HSId->rank,HSId->dims,static_cast<void*>(hData),0);
-  Mat_VarWrite( matout, HSI, MAT_COMPRESSION_ZLIB );
-  Mat_VarFree(HSI);
+  matvar_t *HSIout = Mat_VarCreate("HSI", MAT_C_SINGLE, MAT_T_SINGLE, HSId->rank, dim3d, static_cast<void*>(hData), 0);
+  Mat_VarWrite( matout, HSIout, MAT_COMPRESSION_ZLIB );
 
+  Mat_VarFree(wavelengthsd);
+  Mat_VarFree(HSIout);
+  Mat_VarFree(HSId);
+
+  Mat_Close(matout);
 }
