@@ -92,7 +92,7 @@ TransformAffineType::Pointer registration3(
 
   // Print results
   if ( params.output == 1 ){
-    finalAffineParameters(transform, optimizer );
+    finalAffineParameters( transform, optimizer, registration );
   }
 
   return transform;

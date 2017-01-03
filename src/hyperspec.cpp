@@ -285,8 +285,8 @@ void hyperspec_mat(const char *filename){
     // Read moving
     moving = readMat( moving, i, xSize, ySize, hData );
 
-    // Skip center band (fixed)
-    if ( i == nSize/2 ){
+    // Skip center band (fixed) and reference
+    if ( i == nSize/2 || i == nSize-1){
       out = writeMat( moving, out, i, xSize, ySize );
       continue;
     }
@@ -727,8 +727,8 @@ ImageType::Pointer imageMatContainer(
   start[1] = 0;
 
   ImageType::SizeType size;
-  size[0] = xSize;
-  size[1] = ySize;
+  size[0] = ySize;
+  size[1] = xSize;
 
   region.SetSize(size);
   region.SetIndex(start);
@@ -747,8 +747,8 @@ ImageType::Pointer readMat( ImageType* const itkmat,
   for (int j=0; j < ySize; j++) {
     for (int k=0; k < xSize; k++) {
       ImageType::IndexType pixelIndex;
-      pixelIndex[0] = k;
-      pixelIndex[1] = j;
+      pixelIndex[0] = j;
+      pixelIndex[1] = k;
       itkmat->SetPixel(pixelIndex, hData[k + xSize*j + xSize*ySize*i]);
     }
   }
@@ -763,8 +763,8 @@ float* writeMat(            ImageType* const itkmat,
   for ( int j=0; j < ySize; j++ ){
     for ( int k=0; k < xSize; k++ ){
       ImageType::IndexType pixelIndex;
-      pixelIndex[0] = k;
-      pixelIndex[1] = j;
+      pixelIndex[0] = j;
+      pixelIndex[1] = k;
       hData[k + xSize*j + xSize*ySize*i]
         = itkmat->GetPixel(pixelIndex);
     }
@@ -776,24 +776,6 @@ void outMat(                float *hData,
                             string outname,
                             matvar_t *wavelengthsd,
                             matvar_t *HSId ){
-
-  /*
-  unsigned  xx = HSId->dims[0];
-  unsigned  yy = HSId->dims[1];
-  unsigned  nn = HSId->dims[2];
-
-  float array3d[xx][yy][nn] = {0}; //HSId->dims[0]][HSId->dims[1]][HSId->dims[2]] = { 0 };
-
-  // fill 3d array
-  for (unsigned k = 0; k < nn; k++){ //HSId->dims[2]; k++){
-    for (unsigned j = 0; j < yy; j++){ //HSId->dims[1]; j++){
-      for (unsigned i = 0; i < xx; i++){ //HSId->dims[0]; i++){
-        //array3d[i][j][k] = hData[i+j*yy+k*yy*xx];//j*HSId->dims[0]+k*HSId->dims[1]*HSId->dims[2]];
-      }
-    }
-  }
-*/
-
 
   // Prepare
   size_t dim3d[3] = { HSId->dims[0], HSId->dims[1], HSId->dims[2] };

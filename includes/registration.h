@@ -299,7 +299,8 @@ void finalRigidParameters( TransformRigidType::Pointer transform,
 void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
                       OptimizerType::Pointer optimizer);
 void finalAffineParameters( TransformAffineType::Pointer transform,
-                      OptimizerType::Pointer optimizer);
+                      OptimizerType::Pointer optimizer,
+                      RegistrationAffineType::Pointer registration );
 
 // Image registrations
 #include "hyperspec.h"

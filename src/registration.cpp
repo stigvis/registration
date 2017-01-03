@@ -6,41 +6,6 @@
 // =========================================================================
 
 #include "registration.h"
-/*
-// Keeping track of translation registration
-template <typename TRegistration>
-void RegistrationInterfaceCommand<TRegistration>::Execute( itk::Object * object,
-                                            const itk::EventObject & event){
-  Execute( (const itk::Object *) object , event );
-}
-
-template <typename TRegistration>
-void RegistrationInterfaceCommand<TRegistration>::Execute( const itk::Object * object,
-                                            const itk::EventObject & event){
-  if( !(itk::MultiResolutionIterationEvent().CheckEvent( &event ) ) ){
-    return;
-  }
-
-//  std::cout << "\nObserving from class " << object->GetNameOfClass();
-  if (!object->GetObjectName().empty()){
-    std::cout << " \"" << object->GetObjectName() << "\"" << std::endl;
-  }
-
-  const RegistrationType * registration = static_cast<const RegistrationType *>( object );
-
-  unsigned int currentLevel = registration->GetCurrentLevel();
-  typename RegistrationType::ShrinkFactorsPerDimensionContainerType shrinkFactors =
-                                      registration->GetShrinkFactorsPerDimension( currentLevel );
-  typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
-                                      registration->GetSmoothingSigmasPerLevel();
-
-//  std::cout << "-------------------------------------" << std::endl;
-//  std::cout << " Current multi-resolution level = " << currentLevel << std::endl;
-//  std::cout << "    shrink factor = " << shrinkFactors << std::endl;
-//  std::cout << "    smoothing sigma = " << smoothingSigmas[currentLevel] << std::endl;
-//  std::cout << std::endl;
-}
-*/
 
 // Keeping track of the iterations
 void CommandIterationUpdate::Execute(itk::Object *caller, const itk::EventObject & event){
@@ -221,6 +186,7 @@ ResampleFilterType::Pointer resampleRigidPointer(
   resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
   resample->SetOutputOrigin(         fixed->GetOrigin()           );
   resample->SetOutputSpacing(        fixed->GetSpacing()          );
+  std::cout << fixed->GetSpacing() << std::endl;
   resample->SetDefaultPixelValue(               0.0               );
   return resample;
 }
@@ -355,11 +321,12 @@ void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
                       OptimizerType::Pointer optimizer ){
   TransformSimilarityType::ParametersType finalParameters = transform->GetParameters();
 
-  const double finalAngle           = finalParameters[0];
-  const double finalRotationCenterX = finalParameters[1];
-  const double finalRotationCenterY = finalParameters[2];
-  const double finalTranslationX    = finalParameters[3];
-  const double finalTranslationY    = finalParameters[4];
+  const double finalScale           = finalParameters[0];
+  const double finalAngle           = finalParameters[1];
+  const double finalRotationCenterX = finalParameters[2];
+  const double finalRotationCenterY = finalParameters[3];
+  const double finalTranslationX    = finalParameters[4];
+  const double finalTranslationY    = finalParameters[5];
 
   const unsigned int  numberOfIterations = optimizer->GetCurrentIteration();
   const double        bestValue          = optimizer->GetValue();
@@ -368,22 +335,26 @@ void finalSimilarityParameters( TransformSimilarityType::Pointer transform,
   const double finalAngleInDegrees = finalAngle * 180.0 / itk::Math::pi;
 
   std::cout << "Result ="         << std::endl;
+  std::cout << "Scale         = " << finalScale           << std::endl; 
   std::cout << "Angle (radians) " << finalAngle  << std::endl;
   std::cout << "Angle (degrees) " << finalAngleInDegrees  << std::endl;
-  std::cout << "Center X      = " << finalRotationCenterX  << std::endl;
-  std::cout << "Center Y      = " << finalRotationCenterY  << std::endl;
-  std::cout << "Translation X = " << finalTranslationX  << std::endl;
-  std::cout << "Translation Y = " << finalTranslationY  << std::endl;
-  std::cout << "Iterations    = " << numberOfIterations << std::endl;
-  std::cout << "Metric value  = " << bestValue          << std::endl;
+  std::cout << "Center X      = " << finalRotationCenterX << std::endl;
+  std::cout << "Center Y      = " << finalRotationCenterY << std::endl;
+  std::cout << "Translation X = " << finalTranslationX    << std::endl;
+  std::cout << "Translation Y = " << finalTranslationY    << std::endl;
+  std::cout << "Iterations    = " << numberOfIterations   << std::endl;
+  std::cout << "Metric value  = " << bestValue            << std::endl;
 
 }
 
 // Print results from affine transform
 void finalAffineParameters( TransformAffineType::Pointer transform,
-                            OptimizerType::Pointer optimizer ){
+                            OptimizerType::Pointer optimizer,
+                            RegistrationAffineType::Pointer registration ){
 
-  const TransformAffineType::ParametersType finalParameters = transform->GetParameters();
+  const TransformAffineType::ParametersType finalParameters =
+                        registration->GetOutput()->Get()->GetParameters();
+  //const TransformAffineType::ParametersType finalParameters = transform->GetParameters();
 
   const double finalRotationCenterX = transform->GetCenter()[0];
   const double finalRotationCenterY = transform->GetCenter()[1];
