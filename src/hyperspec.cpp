@@ -142,7 +142,27 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
+    } else if (params.regmethod == 5){
+      CompositeTransformType::Pointer translation_transform;
+      translation_transform = translation(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+
+      ResampleFilterType::Pointer resample = ResampleFilterType::New();
+      resample->SetTransform(          translation_transform          );
+      resample->SetInput(                     moving                  );
+      resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
+      resample->SetOutputOrigin(         fixed->GetOrigin()           );
+      resample->SetOutputSpacing(        fixed->GetSpacing()          );
+      resample->SetDefaultPixelValue(               0.0               );
+      registration = resample;
+
+      difference = diffFilter(
+                                  moving,
+                                  registration );
     }
+
     // Add to output containers
     output = registration->GetOutput();
     output->Update();
