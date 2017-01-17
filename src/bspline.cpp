@@ -53,31 +53,69 @@ TransformBSplineType::Pointer registration4(  ImageType* const fixed,
   registration->SetFixedImage(    fixed     );
   registration->SetMovingImage(   moving    );
 
+  RegistrationBSplineType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+  shrinkFactorsPerLevel.SetSize( params.numberOfLevels );
+  shrinkFactorsPerLevel[0] = 3;
+  shrinkFactorsPerLevel[1] = 2;
+  shrinkFactorsPerLevel[2] = 1;
+
+  RegistrationBSplineType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+  smoothingSigmasPerLevel.SetSize( params.numberOfLevels );
+  smoothingSigmasPerLevel[0] = 2;
+  smoothingSigmasPerLevel[1] = 1;
+  smoothingSigmasPerLevel[2] = 0;
+/*
+  RegistrationBSplineType::TransformParametersAdaptorsContainerType adaptors;
+	// First, get fixed image physical dimensions
+  TransformBSplineType::PhysicalDimensionsType             PhysDim;
+  for( unsigned int i=0; i< Dimension; i++ ){
+    PhysDim[i] = fixed->GetSpacing()[i] *
+    static_cast<double>(
+      fixed->GetLargestPossibleRegion().GetSize()[i] - 1 );
+  }
+
+  // Create the transform adaptors specific to B-splines
+  for( unsigned int level = 0; level < params.numberOfLevels; level++ ){
+    ShrinkFilterType::Pointer shrinkFilter = ShrinkFilterType::New();
+    shrinkFilter->SetShrinkFactors( shrinkFactorsPerLevel[level] );
+    shrinkFilter->SetInput( fixed );
+    shrinkFilter->Update();
+    // A good heuristic is to double the b-spline mesh resolution at each level
+    //
+    //TransformType::MeshSizeType requiredMeshSize;
+    for( unsigned int d = 0; d < Dimension; d++ ){
+      meshSize[d] = meshSize[d] << level;
+    }
+    BSplineAdaptorType::Pointer bsplineAdaptor = BSplineAdaptorType::New();
+    bsplineAdaptor->SetTransform( transform );
+    bsplineAdaptor->SetRequiredTransformDomainMeshSize( meshSize );
+    bsplineAdaptor->SetRequiredTransformDomainOrigin(
+      															shrinkFilter->GetOutput()->GetOrigin() );
+    bsplineAdaptor->SetRequiredTransformDomainDirection(
+      															shrinkFilter->GetOutput()->GetDirection() );
+    bsplineAdaptor->SetRequiredTransformDomainPhysicalDimensions(
+      															PhysDim );
+    adaptors.push_back( bsplineAdaptor.GetPointer() );
+    }
+*/
   // Scale estimator
   ScalesEstimatorType::Pointer scalesEstimator = ScalesEstimatorType::New();
   scalesEstimator->SetMetric( metric );
   scalesEstimator->SetTransformForward( true );
   scalesEstimator->SetSmallParameterVariation( 1.0 );
 
-  // Set Optimizer
-  optimizer->SetGradientConvergenceTolerance( params.slength );
-  optimizer->SetLineSearchAccuracy( 1.2 );
-  optimizer->SetDefaultStepLength( 1.5 );
-  optimizer->TraceOn();
-  optimizer->SetMaximumNumberOfFunctionEvaluations( params.niter );
-  optimizer->SetScalesEstimator( scalesEstimator );
-
-  RegistrationBSplineType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-  shrinkFactorsPerLevel.SetSize( 1 );
-  shrinkFactorsPerLevel[0] = 1;
-
-  RegistrationBSplineType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize( 1 );
-  smoothingSigmasPerLevel[0] = 0;
-
+  //registration->SetTransformParametersAdaptorsPerLevel( adaptors );
   registration->SetNumberOfLevels( params.numberOfLevels );
   registration->SetSmoothingSigmasPerLevel( smoothingSigmasPerLevel );
   registration->SetShrinkFactorsPerLevel( shrinkFactorsPerLevel );
+
+  // Set Optimizer
+  optimizer->SetGradientConvergenceTolerance( params.slength );
+  optimizer->SetLineSearchAccuracy( 0.9 );
+  optimizer->SetDefaultStepLength( params.lrate );
+  optimizer->TraceOn();
+  optimizer->SetMaximumNumberOfFunctionEvaluations( params.niter );
+  optimizer->SetScalesEstimator( scalesEstimator );
 
   // Add time and memory probes
   itk::TimeProbesCollectorBase chronometer;

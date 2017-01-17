@@ -176,7 +176,7 @@ void hyperspec_img(const char *filename){
       diff = writeITK( outdiff, diff, i, header );
     }
 
-    // Need some images for the report
+    /* Uncomment for writing to .tif
     WriterType::Pointer writer = WriterType::New();
     string name = params.reg_name;
     name += to_string(i);
@@ -185,7 +185,7 @@ void hyperspec_img(const char *filename){
     writer->SetInput( output );
     //writer->SetInput( moving );
     writer->Update();
-
+    */
 
     cout << "Done with " << i + 1 << " of " << header.bands << endl;
 
@@ -387,7 +387,7 @@ void hyperspec_mat(const char *filename){
     outdiff = difference->GetOutput();
     outdiff->Update();
 
-    // Need some images for the report
+    /* Uncomment for writing to .tif
     WriterType::Pointer writer = WriterType::New();
     string name = params.reg_name;
     name += to_string(i);
@@ -396,6 +396,7 @@ void hyperspec_mat(const char *filename){
     writer->SetInput( output );
     //writer->SetInput( moving );
     writer->Update();
+    */
 
     // Update output array(s)
     out = writeMat( output, out, i, xSize, ySize );

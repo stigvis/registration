@@ -120,7 +120,7 @@ CompositeTransformType::Pointer translation(
 
   transOptimizer->SetNumberOfIterations( params.niter );
   // Relaxation, for speed and coarse pre-registration
-  transOptimizer->SetRelaxationFactor( 0.1 );
+  //transOptimizer->SetRelaxationFactor( 0.1 );
 
   transOptimizer->SetLearningRate( params.lrate );
   transOptimizer->SetMinimumStepLength( params.slength );

@@ -59,6 +59,13 @@ void multispec_raw( int argc, char *argv[] ){
   fixed = fixed_cast_in->GetOutput();
   fixed->Update();
 
+  /* Uncomment for writing to .tif
+  WriterType::Pointer writer = WriterType::New();
+  writer->SetFileName( "input1.tif" );
+  writer->SetInput( fixed_raw );
+  writer->Update();
+  */
+
   // Filter images
   ffixed = fixed;
   if ( params.median == 1){
@@ -80,6 +87,16 @@ void multispec_raw( int argc, char *argv[] ){
     // Cast to float
     CastFilterFloatType::Pointer moving_cast_in = castFloatImage( moving_raw );
     moving = moving_cast_in->GetOutput();
+
+    /* Uncomment for writing to .tif
+    WriterType::Pointer writer2 = WriterType::New();
+    string name = "input";
+    name += to_string(i);
+    name += ".tif";
+    writer2->SetFileName( name );
+    writer2->SetInput( moving );
+    writer2->Update();
+    */
 
     // Filter images
     fmoving = moving;
@@ -158,6 +175,17 @@ void multispec_raw( int argc, char *argv[] ){
     outdiff->Update();
 
     // Write images
+
+    /* Uncomment for writing to .tif
+    WriterType::Pointer writer3 = WriterType::New();
+    string name2 = params.reg_name;
+    name2 += to_string(i);
+    name2 += ".tif";
+    writer3->SetFileName( name2 );
+    writer3->SetInput( output );
+    writer3->Update();
+    */
+
     CastFilterUintType::Pointer moving_cast_out = castUintImage ( output );
     output_raw = moving_cast_out->GetOutput();
     writeRaw( output_raw, i, xsize, ysize, params.reg_name );
@@ -234,6 +262,11 @@ UintImageType::Pointer readRaw( UintImageType* const itkraw,
 
   // Open images
   FILE *fid = fopen(argv, "rb");
+  if (fid == NULL){
+    perror(argv);
+    exit(EXIT_FAILURE);
+  }
+
   unsigned short *in_data = new unsigned short[xsize*ysize]();
   int read_bytes = fread(in_data, sizeof(uint16_t), xsize*ysize, fid);
 
@@ -261,8 +294,8 @@ void writeRaw(  UintImageType* itkimg,
 
   // Recursive names
   name += to_string(i);
-  string writername = name;
-  writername += ".png";
+  //string writername = name;
+  //writername += ".png";
   name += ".raw";
 
   // Prepare
@@ -279,12 +312,6 @@ void writeRaw(  UintImageType* itkimg,
       out_data[xsize*j + k] = itkimg->GetPixel(pixelIndex);
     }
   }
-
-  // Need .tif format for the report
-  UintWriterType::Pointer writer = UintWriterType::New();
-  writer->SetFileName( writername );
-  writer->SetInput( itkimg );
-  writer->Update();
 
   cout << "Out: " << name << endl;
   // Write
