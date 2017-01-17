@@ -51,28 +51,6 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkSquaredDifferenceImageFilter.h"
 #include "itkSubtractImageFilter.h"
-/*
-// Introduce a class that will keep track of the Translation registration
-template <typename TRegistration>
-class RegistrationInterfaceCommand : public itk::Command
-{
-public:
-  typedef  RegistrationInterfaceCommand   Self;
-  typedef  itk::Command                   Superclass;
-  typedef  itk::SmartPointer<Self>        Pointer;
-  itkNewMacro( Self );
-
-protected:
-  RegistrationInterfaceCommand() {};
-
-public:
-  typedef   TRegistration                          RegistrationType;
-
-  void Execute( itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
-  void Execute(const itk::Object * object, const itk::EventObject & event) ITK_OVERRIDE;
-};
-
-*/
 
 // Introduce a class that will keep track of the iterations
 #include "itkCommand.h"
