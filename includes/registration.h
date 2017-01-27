@@ -18,12 +18,18 @@
 #include "itkRegularStepGradientDescentOptimizerv4.h"
 
 // Deformable image registration
+// BSpline
 #include "itkBSplineTransform.h"
 #include "itkBSplineTransformParametersAdaptor.h"
 #include "itkCorrelationImageToImageMetricv4.h"
 #include "itkLBFGSOptimizerv4.h"
 #include "itkMemoryProbesCollectorBase.h"
 #include "itkTimeProbesCollectorBase.h"
+// Demons
+#include "itkImageRegionIterator.h"
+#include "itkDemonsRegistrationFilter.h"
+#include "itkHistogramMatchingImageFilter.h"
+#include "itkWarpImageFilter.h"
 
 // Filtering
 #include "itkBinaryThresholdImageFilter.h"
@@ -80,6 +86,8 @@ typedef unsigned short  UintPixelType;
 
 typedef itk::Image< PixelType, Dimension >                  ImageType;
 typedef itk::Image< UintPixelType, Dimension >              UintImageType;
+typedef itk::Vector< float, Dimension >                     VectorPixelType;
+typedef itk::Image< VectorPixelType, Dimension >            DisplacementFieldType;
 
 // Filters
 typedef itk::MedianImageFilter<
@@ -179,6 +187,21 @@ typedef itk::BSplineTransformParametersAdaptor<
 typedef itk::RegistrationParameterScalesFromPhysicalShift<
                             MetricType >                    ScalesEstimatorType;
 
+// Demons
+typedef itk::DemonsRegistrationFilter<
+                            ImageType,
+                            ImageType,
+                            DisplacementFieldType >         DemonsFilterType;
+typedef itk::HistogramMatchingImageFilter<
+                            ImageType,
+                            ImageType >                     MatchingFilterType;
+typedef itk::WarpImageFilter<
+                          ImageType,
+                          ImageType,
+                          DisplacementFieldType >           WarperType;
+typedef itk::LinearInterpolateImageFunction<
+                          ImageType,
+                          double >                          LinInterpolatorType;
 
 // Image casting, because registrations only supports float
 typedef itk::CastImageFilter<
@@ -302,5 +325,8 @@ CompositeTransformType::Pointer translation(
                             ImageType* const fixed,
                             ImageType* const moving,
                             reg_params params );
-
+WarperType::Pointer registration5(
+                            ImageType* const fixed,
+                            ImageType* const moving,
+                            reg_params params );
 #endif // REGISTRATION_H_DEFINED

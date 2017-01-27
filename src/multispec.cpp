@@ -109,6 +109,7 @@ void multispec_raw( int argc, char *argv[] ){
       fmoving->Update();
     }
 
+    WarperType::Pointer warper = WarperType::New();
     // Throw to registration handler
     // Rigid transform
     if (params.regmethod == 1){
@@ -165,14 +166,43 @@ void multispec_raw( int argc, char *argv[] ){
       difference = diffFilter(
                                   moving,
                                   registration );
+    } else if (params.regmethod == 5){
+      CompositeTransformType::Pointer translation_transform;
+      translation_transform = translation(
+                                  ffixed,
+                                  fmoving,
+                                  params );
+
+      ResampleFilterType::Pointer resample = ResampleFilterType::New();
+      resample->SetTransform(          translation_transform          );
+      resample->SetInput(                     moving                  );
+      resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
+      resample->SetOutputOrigin(         fixed->GetOrigin()           );
+      resample->SetOutputSpacing(        fixed->GetSpacing()          );
+      resample->SetDefaultPixelValue(               0.0               );
+      registration = resample;
+
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+    } else if (params.regmethod == 6){
+      warper = registration5(
+                                  fixed,
+                                  moving,
+                                  params );
     }
 
     // Add to output containers
-    output = registration->GetOutput();
-    output->Update();
+    if (params.regmethod == 6){
+      output = warper->GetOutput();
+      output->Update();
+    } else {
+      output = registration->GetOutput();
+      output->Update();
 
-    outdiff = difference->GetOutput();
-    outdiff->Update();
+      outdiff = difference->GetOutput();
+      outdiff->Update();
+    }
 
     // Write images
 
@@ -191,7 +221,7 @@ void multispec_raw( int argc, char *argv[] ){
     writeRaw( output_raw, i, xsize, ysize, params.reg_name );
 
     // Write diff
-    if ( params.diff_conf == 4 ){
+    if ( params.diff_conf == 4 && params.regmethod != 6){
       CastFilterUintType::Pointer diff_cast_out = castUintImage ( outdiff );
       outdiff_raw = diff_cast_out->GetOutput();
       outdiff_raw->Update();

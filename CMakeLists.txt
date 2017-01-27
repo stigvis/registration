@@ -16,5 +16,6 @@ add_executable(registration
                 src/similarity.cpp
                 src/affine.cpp
                 src/bspline.cpp
+                src/demons.cpp
                 src/translation.cpp )
 target_link_libraries(registration boost_regex matio ${ITK_LIBRARIES})

@@ -61,6 +61,7 @@ void hyperspec_img(const char *filename){
     ffixed->Update();
   }
 
+  WarperType::Pointer warper = WarperType::New();
   // Read images for processing
   // Image i=0 is fixed
   for (int i=0; i < header.bands; i++){
@@ -161,35 +162,47 @@ void hyperspec_img(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
+    } else if (params.regmethod == 6){
+      warper = registration5(
+                                  fixed,
+                                  moving,
+                                  params );
     }
 
     // Add to output containers
-    output = registration->GetOutput();
-    output->Update();
+    if (params.regmethod == 6){
+      output = warper->GetOutput();
+      output->Update();
+    } else {
+      output = registration->GetOutput();
+      output->Update();
 
-    outdiff = difference->GetOutput();
-    outdiff->Update();
+      outdiff = difference->GetOutput();
+      outdiff->Update();
+    }
 
     // Update output array(s)
     out = writeITK( output, out, i, header );
-    if ( params.diff_conf == 1){
+    if ( params.diff_conf == 1 && params.regmethod != 6){
       diff = writeITK( outdiff, diff, i, header );
     }
 
-    /* Uncomment for writing to .tif
+    // Uncomment for writing to .tif
+/*
     WriterType::Pointer writer = WriterType::New();
     string name = params.reg_name;
     name += to_string(i);
     name += ".tif";
     writer->SetFileName( name );
-    writer->SetInput( output );
+    writer->SetInput( warper->GetOutput() );
     //writer->SetInput( moving );
     writer->Update();
-    */
+*/
 
     cout << "Done with " << i + 1 << " of " << header.bands << endl;
 
   }
+
   // Write to .img container
   // See readimage.h
   hyperspectral_write_header( params.reg_name.c_str(), header.bands,
@@ -197,7 +210,7 @@ void hyperspec_img(const char *filename){
   hyperspectral_write_image( params.reg_name.c_str(), header.bands,
     header.samples, header.lines, out );
 
-  if ( params.diff_conf == 1){
+  if ( params.diff_conf == 1 && params.regmethod != 6){
     hyperspectral_write_header( params.diff_name.c_str(), header.bands,
       header.samples, header.lines, header.wlens );
     hyperspectral_write_image( params.diff_name.c_str(), header.bands,
@@ -298,6 +311,7 @@ void hyperspec_mat(const char *filename){
   }
 
 
+  WarperType::Pointer warper = WarperType::New();
   float *out  = new float[xSize*ySize*nSize]();
   float *diff = new float[xSize*ySize*nSize]();
   for (int i=0; i<nSize; i++){
@@ -379,13 +393,43 @@ void hyperspec_mat(const char *filename){
       difference = diffFilter(
                                   moving,
                                   registration );
-    }
-    // Add to output containers
-    output = registration->GetOutput();
-    output->Update();
+    } else if (params.regmethod == 5){
+      CompositeTransformType::Pointer translation_transform;
+      translation_transform = translation(
+                                  ffixed,
+                                  fmoving,
+                                  params );
 
-    outdiff = difference->GetOutput();
-    outdiff->Update();
+      ResampleFilterType::Pointer resample = ResampleFilterType::New();
+      resample->SetTransform(          translation_transform          );
+      resample->SetInput(                     moving                  );
+      resample->SetSize(  fixed->GetLargestPossibleRegion().GetSize() );
+      resample->SetOutputOrigin(         fixed->GetOrigin()           );
+      resample->SetOutputSpacing(        fixed->GetSpacing()          );
+      resample->SetDefaultPixelValue(               0.0               );
+      registration = resample;
+
+      difference = diffFilter(
+                                  moving,
+                                  registration );
+    } else if (params.regmethod == 6){
+      warper = registration5(
+                                  fixed,
+                                  moving,
+                                  params );
+    }
+
+    // Add to output containers
+    if (params.regmethod == 6){
+      output = warper->GetOutput();
+      output->Update();
+    } else {
+      output = registration->GetOutput();
+      output->Update();
+
+      outdiff = difference->GetOutput();
+      outdiff->Update();
+    }
 
     /* Uncomment for writing to .tif
     WriterType::Pointer writer = WriterType::New();
@@ -400,7 +444,7 @@ void hyperspec_mat(const char *filename){
 
     // Update output array(s)
     out = writeMat( output, out, i, xSize, ySize );
-    if ( params.diff_conf == 1){
+    if ( params.diff_conf == 1 && params.regmethod != 6){
       diff = writeMat( output, diff, i, xSize, ySize );
     }
 
